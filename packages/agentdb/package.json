@@ -3,9 +3,11 @@
   "name": "agentdb",
   "license": "MIT",
   "version": "0.0.0",
-  "main": "src/index.js",
-  "types": "src/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
+    "lint": "eslint . --ext .ts --cache",
+    "type-check": "tsc --noEmit --project tsconfig.json",
     "test": "jest"
   }
 }

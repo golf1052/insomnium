@@ -1,45 +1,96 @@
-const { randomBytes } = require('crypto');
-const { EventEmitter } = require('events');
-const fs = require('fs');
-const path = require('path');
+import { randomBytes } from 'crypto';
+import { EventEmitter } from 'events';
+import fs from 'fs';
+import path from 'path';
 
-function isDate(value) {
-  return value instanceof Date || (!!value && typeof value.getTime === 'function');
+interface DeletedDoc {
+  $$deleted: true;
+  _id: string;
 }
 
-function checkKey(key, value) {
-  if (typeof key === 'number') {
-    key = key.toString();
-  }
+type SerializableDoc = Record<string, any> | DeletedDoc;
+type CompareStrings = (a: string, b: string) => number;
+type Query = Record<string, any>;
+type QueryValue = string | Query | null | undefined;
+type GenericCallback = (...args: any[]) => void;
+type CountCallback = (err: Error | null, count: number) => void;
+type FindCallback<T> = (err: Error | null, docs: T[]) => void;
+
+type CursorExecFn<T> = (
+  err: Error | null,
+  docs: T[],
+  callback: GenericCallback,
+) => void;
+
+type InternalUpdateCallback<T> = (
+  err: Error | null,
+  numAffected: number,
+  affectedDocuments?: T | T[] | null,
+  upsert?: boolean,
+) => void;
+
+interface InternalTask {
+  arguments: IArguments | unknown[];
+  fn: (...args: any[]) => void;
+  this: unknown;
+}
+
+interface InternalUpdateOptions {
+  multi?: boolean;
+  returnUpdatedDocs?: boolean;
+  upsert?: boolean;
+}
+
+interface InternalRemoveOptions {
+  multi?: boolean;
+}
+
+interface InternalDataStoreOptions {
+  afterSerialization?: (value: string) => string;
+  autoload?: boolean;
+  beforeDeserialization?: (value: string) => string;
+  compareStrings?: CompareStrings;
+  corruptAlertThreshold?: number;
+  filename?: string;
+  inMemoryOnly?: boolean;
+  onload?: (err: Error | null) => void;
+}
+
+function isDate(value: unknown): value is Date {
+  return value instanceof Date || (!!value && typeof (value as Date).getTime === 'function');
+}
+
+function checkKey(key: string | number, value: unknown) {
+  const normalizedKey = typeof key === 'number' ? key.toString() : key;
 
   if (
-    key[0] === '$' &&
-    !(key === '$$date' && typeof value === 'number') &&
-    !(key === '$$deleted' && value === true)
+    normalizedKey[0] === '$' &&
+    !(normalizedKey === '$$date' && typeof value === 'number') &&
+    !(normalizedKey === '$$deleted' && value === true)
   ) {
     throw new Error('Field names cannot begin with the $ character');
   }
 
-  if (key.includes('.')) {
+  if (normalizedKey.includes('.')) {
     throw new Error('Field names cannot contain a .');
   }
 }
 
-function checkObject(obj) {
+function checkObject(obj: unknown) {
   if (Array.isArray(obj)) {
     obj.forEach(checkObject);
   }
 
   if (obj && typeof obj === 'object') {
     Object.keys(obj).forEach(key => {
-      checkKey(key, obj[key]);
-      checkObject(obj[key]);
+      checkKey(key, (obj as Record<string, unknown>)[key]);
+      checkObject((obj as Record<string, unknown>)[key]);
     });
   }
 }
 
-function serialize(obj) {
-  return JSON.stringify(obj, function(key, value) {
+function serialize(obj: SerializableDoc) {
+  return JSON.stringify(obj, function(this: Record<string, unknown>, key, value) {
     checkKey(key, value);
 
     if (value === undefined) {
@@ -58,17 +109,17 @@ function serialize(obj) {
   });
 }
 
-function deserialize(rawData) {
+function deserialize(rawData: string) {
   return JSON.parse(rawData, (_key, value) => {
     if (value && typeof value === 'object' && value.$$date !== undefined) {
       return new Date(value.$$date);
     }
 
     return value;
-  });
+  }) as SerializableDoc;
 }
 
-function deepCopy(obj, strictKeys = false) {
+function deepCopy<T>(obj: T, strictKeys = false): T {
   if (
     typeof obj === 'boolean' ||
     typeof obj === 'number' ||
@@ -80,22 +131,22 @@ function deepCopy(obj, strictKeys = false) {
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(item => deepCopy(item, strictKeys));
+    return obj.map(item => deepCopy(item, strictKeys)) as T;
   }
 
   if (obj && typeof obj === 'object') {
-    return Object.keys(obj).reduce((acc, key) => {
+    return Object.keys(obj as Record<string, unknown>).reduce<Record<string, unknown>>((acc, key) => {
       if (!strictKeys || (key[0] !== '$' && !key.includes('.'))) {
-        acc[key] = deepCopy(obj[key], strictKeys);
+        acc[key] = deepCopy((obj as Record<string, unknown>)[key], strictKeys);
       }
       return acc;
-    }, {});
+    }, {}) as T;
   }
 
-  return undefined;
+  return undefined as T;
 }
 
-function getDotValue(obj, field) {
+function getDotValue(obj: unknown, field: string | string[]): unknown {
   const fieldParts = Array.isArray(field) ? field : `${field}`.split('.');
 
   if (!obj) {
@@ -107,10 +158,10 @@ function getDotValue(obj, field) {
   }
 
   if (fieldParts.length === 1) {
-    return obj[fieldParts[0]];
+    return (obj as Record<string, unknown>)[fieldParts[0]];
   }
 
-  const first = obj[fieldParts[0]];
+  const first = (obj as Record<string, unknown>)[fieldParts[0]];
 
   if (Array.isArray(first)) {
     const index = parseInt(fieldParts[1], 10);
@@ -125,7 +176,7 @@ function getDotValue(obj, field) {
   return getDotValue(first, fieldParts.slice(1));
 }
 
-function compareNSB(a, b) {
+function compareNSB(a: number | string | boolean, b: number | string | boolean) {
   if (a < b) {
     return -1;
   }
@@ -135,7 +186,7 @@ function compareNSB(a, b) {
   return 0;
 }
 
-function compareArrays(a, b, compareStrings) {
+function compareArrays(a: unknown[], b: unknown[], compareStrings: CompareStrings) {
   const max = Math.min(a.length, b.length);
   for (let i = 0; i < max; i += 1) {
     const comparison = compareThings(a[i], b[i], compareStrings);
@@ -147,7 +198,7 @@ function compareArrays(a, b, compareStrings) {
   return compareNSB(a.length, b.length);
 }
 
-function compareThings(a, b, compareStrings = compareNSB) {
+function compareThings(a: unknown, b: unknown, compareStrings: CompareStrings = compareNSB) {
   if (a === undefined) {
     return b === undefined ? 0 : -1;
   }
@@ -197,8 +248,8 @@ function compareThings(a, b, compareStrings = compareNSB) {
     return 1;
   }
 
-  const aKeys = Object.keys(a).sort();
-  const bKeys = Object.keys(b).sort();
+  const aKeys = Object.keys(a as Record<string, unknown>).sort();
+  const bKeys = Object.keys(b as Record<string, unknown>).sort();
   const max = Math.min(aKeys.length, bKeys.length);
 
   for (let i = 0; i < max; i += 1) {
@@ -207,7 +258,11 @@ function compareThings(a, b, compareStrings = compareNSB) {
       return keyComparison;
     }
 
-    const comparison = compareThings(a[aKeys[i]], b[bKeys[i]], compareStrings);
+    const comparison = compareThings(
+      (a as Record<string, unknown>)[aKeys[i]],
+      (b as Record<string, unknown>)[bKeys[i]],
+      compareStrings,
+    );
     if (comparison !== 0) {
       return comparison;
     }
@@ -216,7 +271,7 @@ function compareThings(a, b, compareStrings = compareNSB) {
   return compareNSB(aKeys.length, bKeys.length);
 }
 
-function areThingsEqual(a, b) {
+function areThingsEqual(a: unknown, b: unknown): boolean {
   if (
     a === null ||
     typeof a === 'string' ||
@@ -268,7 +323,7 @@ function areThingsEqual(a, b) {
   }
 
   for (const key of aKeys) {
-    if (!bKeys.includes(key) || !areThingsEqual(a[key], b[key])) {
+    if (!bKeys.includes(key) || !areThingsEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) {
       return false;
     }
   }
@@ -276,7 +331,7 @@ function areThingsEqual(a, b) {
   return true;
 }
 
-function areComparable(a, b) {
+function areComparable(a: unknown, b: unknown) {
   const validA = typeof a === 'string' || typeof a === 'number' || isDate(a);
   const validB = typeof b === 'string' || typeof b === 'number' || isDate(b);
 
@@ -291,8 +346,8 @@ function areComparable(a, b) {
   return typeof a === typeof b;
 }
 
-const comparisonFunctions = {
-  $gt: (a, b) => areComparable(a, b) && a > b,
+const comparisonFunctions: Record<string, (a: unknown, b: unknown) => boolean> = {
+  $gt: (a, b) => areComparable(a, b) && (a as string | number | Date) > (b as string | number | Date),
   $in: (a, b) => {
     if (!Array.isArray(b)) {
       throw new Error('$in operator called with a non-array');
@@ -309,7 +364,12 @@ const comparisonFunctions = {
   },
 };
 
-function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue = false) {
+function matchQueryPart(
+  obj: Record<string, unknown>,
+  queryKey: string,
+  queryValue: unknown,
+  treatObjAsValue = false,
+): boolean {
   const objValue = getDotValue(obj, queryKey);
 
   if (Array.isArray(objValue) && !treatObjAsValue) {
@@ -347,7 +407,7 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue = false) {
           throw new Error(`Unknown comparison function ${key}`);
         }
 
-        if (!fn(objValue, queryValue[key])) {
+        if (!fn(objValue, (queryValue as Record<string, unknown>)[key])) {
           return false;
         }
       }
@@ -363,7 +423,7 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue = false) {
   return areThingsEqual(objValue, queryValue);
 }
 
-function isPrimitiveType(value) {
+function isPrimitiveType(value: unknown) {
   return (
     typeof value === 'boolean' ||
     typeof value === 'number' ||
@@ -374,7 +434,7 @@ function isPrimitiveType(value) {
   );
 }
 
-function match(obj, query) {
+function match(obj: unknown, query: Query) {
   if (isPrimitiveType(obj) || isPrimitiveType(query)) {
     return matchQueryPart({ value: obj }, 'value', query);
   }
@@ -384,7 +444,7 @@ function match(obj, query) {
       throw new Error(`Unknown logical operator ${key}`);
     }
 
-    if (!matchQueryPart(obj, key, query[key])) {
+    if (!matchQueryPart(obj as Record<string, unknown>, key, query[key])) {
       return false;
     }
   }
@@ -392,7 +452,7 @@ function match(obj, query) {
   return true;
 }
 
-function callSoon(callback, ...args) {
+function callSoon(callback: GenericCallback, ...args: any[]) {
   if (typeof setImmediate === 'function') {
     setImmediate(() => callback(...args));
   } else {
@@ -401,17 +461,15 @@ function callSoon(callback, ...args) {
 }
 
 class Executor {
-  constructor() {
-    this.buffer = [];
-    this.ready = false;
-    this.queue = [];
-    this.running = false;
-  }
+  private buffer: InternalTask[] = [];
+  private queue: InternalTask[] = [];
+  private running = false;
+  ready = false;
 
-  push(task, forceQueuing = false) {
+  push(task: InternalTask, forceQueuing = false) {
     if (this.ready || forceQueuing) {
       this.queue.push(task);
-      this.#drain();
+      this.drain();
     } else {
       this.buffer.push(task);
     }
@@ -421,10 +479,10 @@ class Executor {
     this.ready = true;
     this.queue.push(...this.buffer);
     this.buffer = [];
-    this.#drain();
+    this.drain();
   }
 
-  #drain() {
+  private drain() {
     if (this.running) {
       return;
     }
@@ -439,13 +497,13 @@ class Executor {
     const lastArg = args[args.length - 1];
     const finish = () => {
       this.running = false;
-      this.#drain();
+      this.drain();
     };
 
     if (typeof lastArg === 'function') {
-      args[args.length - 1] = (...callbackArgs) => {
+      args[args.length - 1] = (...callbackArgs: any[]) => {
         finish();
-        lastArg(...callbackArgs);
+        (lastArg as GenericCallback)(...callbackArgs);
       };
     } else if (!lastArg && args.length !== 0) {
       args[args.length - 1] = () => {
@@ -462,7 +520,7 @@ class Executor {
     } catch (err) {
       finish();
       if (typeof lastArg === 'function') {
-        lastArg(err);
+        (lastArg as GenericCallback)(err);
         return;
       }
 
@@ -471,18 +529,26 @@ class Executor {
   }
 }
 
-async function ensureDirectoryExists(dir) {
+async function ensureDirectoryExists(dir: string) {
   await fs.promises.mkdir(dir, { recursive: true });
 }
 
-async function crashSafeWriteFile(filename, data) {
+async function crashSafeWriteFile(filename: string, data: string) {
   const tempFilename = `${filename}~`;
   await fs.promises.writeFile(tempFilename, data, 'utf8');
   await fs.promises.rename(tempFilename, filename);
 }
 
-class Persistence {
-  constructor(options) {
+class Persistence<T extends Record<string, any> = Record<string, any>> {
+  autocompactionIntervalId?: ReturnType<typeof setInterval>;
+  readonly afterSerialization: (value: string) => string;
+  readonly beforeDeserialization: (value: string) => string;
+  readonly corruptAlertThreshold: number;
+  readonly db: Datastore<T>;
+  readonly filename: string | null;
+  readonly inMemoryOnly: boolean;
+
+  constructor(options: { db: Datastore<T> } & InternalDataStoreOptions) {
     this.db = options.db;
     this.inMemoryOnly = this.db.inMemoryOnly;
     this.filename = this.db.filename;
@@ -500,7 +566,7 @@ class Persistence {
     this.db.executor.push({ this: this, fn: this.persistCachedDatabase, arguments: [] });
   }
 
-  setAutocompactionInterval(interval) {
+  setAutocompactionInterval(interval: number) {
     const minInterval = 5000;
     const realInterval = Math.max(interval || 0, minInterval);
 
@@ -516,8 +582,8 @@ class Persistence {
     }
   }
 
-  persistCachedDatabase(cb = () => {}) {
-    if (this.inMemoryOnly) {
+  persistCachedDatabase(cb: (err: Error | null) => void = () => {}) {
+    if (this.inMemoryOnly || !this.filename) {
       callSoon(cb, null);
       return;
     }
@@ -529,18 +595,18 @@ class Persistence {
     const data = payload ? `${payload}\n` : '';
 
     (async () => {
-      await ensureDirectoryExists(path.dirname(this.filename));
-      await crashSafeWriteFile(this.filename, data);
+      await ensureDirectoryExists(path.dirname(this.filename as string));
+      await crashSafeWriteFile(this.filename as string, data);
     })()
       .then(() => {
         this.db.emit('compaction.done');
         cb(null);
       })
-      .catch(err => cb(err));
+      .catch((err: Error) => cb(err));
   }
 
-  persistNewState(newDocs, cb = () => {}) {
-    if (this.inMemoryOnly || newDocs.length === 0) {
+  persistNewState(newDocs: SerializableDoc[], cb: (err: Error | null) => void = () => {}) {
+    if (this.inMemoryOnly || !this.filename || newDocs.length === 0) {
       callSoon(cb, null);
       return;
     }
@@ -550,16 +616,16 @@ class Persistence {
       .join('\n');
 
     (async () => {
-      await ensureDirectoryExists(path.dirname(this.filename));
-      await fs.promises.appendFile(this.filename, `${payload}\n`, 'utf8');
+      await ensureDirectoryExists(path.dirname(this.filename as string));
+      await fs.promises.appendFile(this.filename as string, `${payload}\n`, 'utf8');
     })()
       .then(() => cb(null))
-      .catch(err => cb(err));
+      .catch((err: Error) => cb(err));
   }
 
-  treatRawData(rawData) {
+  treatRawData(rawData: string): T[] {
     const data = rawData.split('\n');
-    const dataById = new Map();
+    const dataById = new Map<string, T>();
     let corruptItems = -1;
 
     for (const item of data) {
@@ -570,14 +636,14 @@ class Persistence {
 
       try {
         const doc = deserialize(this.beforeDeserialization(item));
-        if (doc && doc._id) {
-          if (doc.$$deleted === true) {
+        if (doc && '_id' in doc) {
+          if ('$$deleted' in doc && doc.$$deleted === true) {
             dataById.delete(doc._id);
           } else {
-            dataById.set(doc._id, doc);
+            dataById.set(doc._id, doc as T);
           }
         }
-      } catch (err) {
+      } catch {
         corruptItems += 1;
       }
     }
@@ -593,10 +659,10 @@ class Persistence {
     return Array.from(dataById.values());
   }
 
-  loadDatabase(cb = () => {}) {
+  loadDatabase(cb: (err: Error | null) => void = () => {}) {
     this.db.clearAllData();
 
-    if (this.inMemoryOnly) {
+    if (this.inMemoryOnly || !this.filename) {
       callSoon(() => {
         this.db.executor.processBuffer();
         cb(null);
@@ -605,19 +671,19 @@ class Persistence {
     }
 
     (async () => {
-      await ensureDirectoryExists(path.dirname(this.filename));
+      await ensureDirectoryExists(path.dirname(this.filename as string));
 
       try {
-        await fs.promises.access(this.filename);
-      } catch (err) {
-        await fs.promises.writeFile(this.filename, '', 'utf8');
+        await fs.promises.access(this.filename as string);
+      } catch {
+        await fs.promises.writeFile(this.filename as string, '', 'utf8');
       }
 
-      const rawData = await fs.promises.readFile(this.filename, 'utf8');
+      const rawData = await fs.promises.readFile(this.filename as string, 'utf8');
       const docs = this.treatRawData(rawData);
       this.db.resetData(docs);
 
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         this.persistCachedDatabase(err => {
           if (err) {
             reject(err);
@@ -631,29 +697,35 @@ class Persistence {
         this.db.executor.processBuffer();
         cb(null);
       })
-      .catch(err => cb(err));
+      .catch((err: Error) => cb(err));
   }
 }
 
-class Cursor {
-  constructor(db, query, execFn) {
+class Cursor<T extends Record<string, any> = Record<string, any>> {
+  private _limit?: number | null;
+  private _sort?: Record<string, number>;
+  readonly db: Datastore<T>;
+  readonly execFn?: CursorExecFn<T>;
+  readonly query: Query;
+
+  constructor(db: Datastore<T>, query?: QueryValue, execFn?: CursorExecFn<T>) {
     this.db = db;
     this.query = normalizeQuery(query);
     this.execFn = execFn;
   }
 
-  limit(limit) {
+  limit(limit: number | null) {
     this._limit = limit;
     return this;
   }
 
-  sort(sortQuery) {
+  sort(sortQuery: Record<string, number>) {
     this._sort = sortQuery;
     return this;
   }
 
-  _exec(callback) {
-    let results = [];
+  _exec(callback: GenericCallback) {
+    let results: T[] = [];
 
     try {
       results = this.db
@@ -662,8 +734,8 @@ class Cursor {
 
       if (this._sort) {
         const criteria = Object.keys(this._sort).map(key => ({
+          direction: this._sort![key],
           key,
-          direction: this._sort[key],
         }));
 
         results.sort((a, b) => {
@@ -702,12 +774,12 @@ class Cursor {
     }
   }
 
-  exec() {
-    this.db.executor.push({ this: this, fn: this._exec, arguments: arguments });
+  exec(callback: FindCallback<T>) {
+    this.db.executor.push({ this: this, fn: this._exec, arguments }, false);
   }
 }
 
-function normalizeQuery(query) {
+function normalizeQuery(query?: QueryValue): Query {
   if (!query) {
     return {};
   }
@@ -719,25 +791,32 @@ function normalizeQuery(query) {
   return query;
 }
 
-class Datastore extends EventEmitter {
-  constructor(options = {}) {
+class Datastore<T extends Record<string, any> = Record<string, any>> extends EventEmitter {
+  static Cursor = Cursor;
+  static Persistence = Persistence;
+
+  autoload: boolean;
+  compareStrings: CompareStrings;
+  executor: Executor;
+  filename: string | null;
+  inMemoryOnly: boolean;
+  persistence: Persistence<T>;
+  private docs: Map<string, T>;
+
+  constructor(options: string | InternalDataStoreOptions = {}) {
     super();
 
-    if (typeof options === 'string') {
-      options = {
-        filename: options,
-      };
-    }
+    const normalizedOptions = typeof options === 'string' ? { filename: options } : options;
 
-    this.inMemoryOnly = options.inMemoryOnly || !options.filename;
-    this.autoload = options.autoload || false;
-    this.filename = this.inMemoryOnly ? null : options.filename;
-    this.compareStrings = options.compareStrings;
+    this.inMemoryOnly = normalizedOptions.inMemoryOnly || !normalizedOptions.filename;
+    this.autoload = normalizedOptions.autoload || false;
+    this.filename = this.inMemoryOnly ? null : normalizedOptions.filename || null;
+    this.compareStrings = normalizedOptions.compareStrings || compareNSB;
     this.persistence = new Persistence({
+      afterSerialization: normalizedOptions.afterSerialization,
+      beforeDeserialization: normalizedOptions.beforeDeserialization,
+      corruptAlertThreshold: normalizedOptions.corruptAlertThreshold,
       db: this,
-      afterSerialization: options.afterSerialization,
-      beforeDeserialization: options.beforeDeserialization,
-      corruptAlertThreshold: options.corruptAlertThreshold,
     });
     this.executor = new Executor();
     this.docs = new Map();
@@ -747,7 +826,7 @@ class Datastore extends EventEmitter {
     }
 
     if (this.autoload) {
-      this.loadDatabase(options.onload || (err => {
+      this.loadDatabase(normalizedOptions.onload || (err => {
         if (err) {
           throw err;
         }
@@ -755,15 +834,18 @@ class Datastore extends EventEmitter {
     }
   }
 
-  loadDatabase() {
+  loadDatabase(callback?: (err: Error | null) => void) {
     this.executor.push({ this: this.persistence, fn: this.persistence.loadDatabase, arguments }, true);
+    if (!callback && arguments.length === 0) {
+      return;
+    }
   }
 
   getAllData() {
     return Array.from(this.docs.values());
   }
 
-  resetData(docs = []) {
+  resetData(docs: T[] = []) {
     this.docs = new Map(docs.map(doc => [doc._id, doc]));
   }
 
@@ -779,7 +861,7 @@ class Datastore extends EventEmitter {
     return tentativeId;
   }
 
-  prepareDocumentForInsertion(newDoc) {
+  prepareDocumentForInsertion(newDoc: T) {
     const preparedDoc = deepCopy(newDoc);
     if (preparedDoc._id === undefined) {
       preparedDoc._id = this.createNewId();
@@ -788,14 +870,14 @@ class Datastore extends EventEmitter {
     return preparedDoc;
   }
 
-  _insert(newDoc, cb = () => {}) {
-    let preparedDoc;
+  _insert(newDoc: T, cb: (err: Error | null, newDoc?: T) => void = () => {}) {
+    let preparedDoc: T;
 
     try {
       preparedDoc = this.prepareDocumentForInsertion(newDoc);
       this.docs.set(preparedDoc._id, preparedDoc);
     } catch (err) {
-      cb(err);
+      cb(err as Error);
       return;
     }
 
@@ -809,11 +891,14 @@ class Datastore extends EventEmitter {
     });
   }
 
-  insert() {
-    this.executor.push({ this: this, fn: this._insert, arguments });
+  insert(doc: T, callback?: (err: Error | null, newDoc: T) => void) {
+    this.executor.push({ this: this, fn: this._insert, arguments }, false);
+    if (!callback && arguments.length === 1) {
+      return;
+    }
   }
 
-  count(query, callback) {
+  count(query: QueryValue, callback?: CountCallback) {
     const cursor = new Cursor(this, query, (err, docs, done) => {
       if (err) {
         done(err);
@@ -824,14 +909,14 @@ class Datastore extends EventEmitter {
     });
 
     if (typeof callback === 'function') {
-      cursor.exec(callback);
+      cursor.exec(callback as unknown as FindCallback<T>);
       return;
     }
 
     return cursor;
   }
 
-  find(query, projection, callback) {
+  find(query: QueryValue = {}, projection?: unknown | FindCallback<T>, callback?: FindCallback<T>) {
     if (typeof projection === 'function') {
       callback = projection;
     }
@@ -853,17 +938,18 @@ class Datastore extends EventEmitter {
     return cursor;
   }
 
-  _update(query, updateQuery, options, cb) {
-    if (typeof options === 'function') {
-      cb = options;
-      options = {};
-    }
-
-    const callback = cb || (() => {});
+  _update(
+    query: QueryValue,
+    updateQuery: T,
+    options: InternalUpdateOptions | InternalUpdateCallback<T> = {},
+    cb?: InternalUpdateCallback<T>,
+  ) {
+    const normalizedOptions = typeof options === 'function' ? {} : options;
+    const callback = (typeof options === 'function' ? options : cb) || (() => {});
     const normalizedQuery = normalizeQuery(query);
-    const multi = options.multi || false;
-    const upsert = options.upsert || false;
-    const modifications = [];
+    const multi = normalizedOptions.multi || false;
+    const upsert = normalizedOptions.upsert || false;
+    const modifications: Array<{ oldDoc: T; newDoc: T }> = [];
 
     try {
       for (const doc of this.getAllData()) {
@@ -871,17 +957,17 @@ class Datastore extends EventEmitter {
           const updatedDoc = deepCopy(updateQuery);
           updatedDoc._id = doc._id;
           checkObject(updatedDoc);
-          modifications.push({ oldDoc: doc, newDoc: updatedDoc });
+          modifications.push({ newDoc: updatedDoc, oldDoc: doc });
         }
       }
     } catch (err) {
-      callback(err);
+      callback(err as Error, 0);
       return;
     }
 
     if (modifications.length === 0 && upsert) {
       this._insert(updateQuery, (err, newDoc) => {
-        callback(err, err ? 0 : 1, newDoc || null, !err);
+        callback(err || null, err ? 0 : 1, newDoc || null, !err);
       });
       return;
     }
@@ -894,11 +980,11 @@ class Datastore extends EventEmitter {
     const updatedDocs = modifications.map(modification => modification.newDoc);
     this.persistence.persistNewState(updatedDocs, err => {
       if (err) {
-        callback(err);
+        callback(err, 0);
         return;
       }
 
-      if (options.returnUpdatedDocs) {
+      if (normalizedOptions.returnUpdatedDocs) {
         callback(
           null,
           updatedDocs.length,
@@ -912,20 +998,28 @@ class Datastore extends EventEmitter {
     });
   }
 
-  update() {
-    this.executor.push({ this: this, fn: this._update, arguments });
+  update(
+    query: QueryValue,
+    updateQuery: T,
+    options?: InternalUpdateOptions | InternalUpdateCallback<T>,
+    callback?: InternalUpdateCallback<T>,
+  ) {
+    this.executor.push({ this: this, fn: this._update, arguments }, false);
+    if (!options && !callback && arguments.length === 2) {
+      return;
+    }
   }
 
-  _remove(query, options, cb) {
-    if (typeof options === 'function') {
-      cb = options;
-      options = {};
-    }
-
-    const callback = cb || (() => {});
+  _remove(
+    query: QueryValue,
+    options: InternalRemoveOptions | ((err: Error | null, numRemoved: number) => void) = {},
+    cb?: (err: Error | null, numRemoved: number) => void,
+  ) {
+    const normalizedOptions = typeof options === 'function' ? {} : options;
+    const callback = (typeof options === 'function' ? options : cb) || (() => {});
     const normalizedQuery = normalizeQuery(query);
-    const multi = options.multi || false;
-    const removedDocs = [];
+    const multi = normalizedOptions.multi || false;
+    const removedDocs: DeletedDoc[] = [];
 
     try {
       for (const doc of this.getAllData()) {
@@ -935,7 +1029,7 @@ class Datastore extends EventEmitter {
         }
       }
     } catch (err) {
-      callback(err);
+      callback(err as Error, 0);
       return;
     }
 
@@ -944,13 +1038,23 @@ class Datastore extends EventEmitter {
     });
   }
 
-  remove() {
-    this.executor.push({ this: this, fn: this._remove, arguments });
+  remove(
+    query: QueryValue,
+    options?: InternalRemoveOptions | ((err: Error | null, numRemoved: number) => void),
+    callback?: (err: Error | null, numRemoved: number) => void,
+  ) {
+    this.executor.push({ this: this, fn: this._remove, arguments }, false);
+    if (!options && !callback && arguments.length === 1) {
+      return;
+    }
   }
 }
 
-Datastore.Cursor = Cursor;
-Datastore.Persistence = Persistence;
+namespace Datastore {
+  export type DataStoreOptions = InternalDataStoreOptions;
+  export type RemoveOptions = InternalRemoveOptions;
+  export type UpdateCallback<T> = InternalUpdateCallback<T>;
+  export type UpdateOptions = InternalUpdateOptions;
+}
 
-module.exports = Datastore;
-module.exports.default = Datastore;
+export = Datastore;
