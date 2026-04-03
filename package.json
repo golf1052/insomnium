@@ -15,6 +15,7 @@
     "npm": ">=8.19.0"
   },
   "workspaces": [
+    "packages/agentdb",
     "packages/insomnia-testing",
     "packages/insomnia-send-request",
     "packages/insomnia",
