@@ -39,7 +39,7 @@ function checkObject(obj) {
 }
 
 function serialize(obj) {
-  return JSON.stringify(obj, function (key, value) {
+  return JSON.stringify(obj, function(key, value) {
     checkKey(key, value);
 
     if (value === undefined) {
