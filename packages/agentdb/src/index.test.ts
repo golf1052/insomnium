@@ -3,9 +3,9 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import Datastore = require('./index');
+import Datastore from './index';
 
-function countDocs<T>(db: Datastore<T>, query: any) {
+function countDocs<T extends Record<string, any>>(db: Datastore<T>, query: any) {
   return new Promise<number>((resolve, reject) => {
     db.count(query, (err, total) => {
       if (err) {
@@ -31,7 +31,7 @@ function exec<T>(cursor: { exec: (callback: (err: Error | null, docs: T[]) => vo
   });
 }
 
-function insert<T>(db: Datastore<T>, doc: T) {
+function insert<T extends Record<string, any>>(db: Datastore<T>, doc: T) {
   return new Promise<T>((resolve, reject) => {
     db.insert(doc, (err, newDoc) => {
       if (err) {
@@ -44,7 +44,7 @@ function insert<T>(db: Datastore<T>, doc: T) {
   });
 }
 
-function updateDoc<T>(db: Datastore<T>, query: any, doc: T) {
+function updateDoc<T extends Record<string, any>>(db: Datastore<T>, query: any, doc: T) {
   return new Promise<number>((resolve, reject) => {
     db.update(query, doc, (err, numAffected) => {
       if (err) {
@@ -57,7 +57,7 @@ function updateDoc<T>(db: Datastore<T>, query: any, doc: T) {
   });
 }
 
-function removeDocs<T>(db: Datastore<T>, query: any, options?: { multi?: boolean }) {
+function removeDocs<T extends Record<string, any>>(db: Datastore<T>, query: any, options?: { multi?: boolean }) {
   return new Promise<number>((resolve, reject) => {
     db.remove(query, options || {}, (err, numRemoved) => {
       if (err) {
@@ -70,7 +70,7 @@ function removeDocs<T>(db: Datastore<T>, query: any, options?: { multi?: boolean
   });
 }
 
-function persistCachedDatabase<T>(db: Datastore<T>) {
+function persistCachedDatabase<T extends Record<string, any>>(db: Datastore<T>) {
   return new Promise<void>((resolve, reject) => {
     db.persistence.persistCachedDatabase(err => {
       if (err) {
@@ -108,7 +108,7 @@ describe('agentdb', () => {
     expect(await countDocs(db, { _id: { $nin: ['a', 'b'] } })).toBe(1);
 
     const docs = await exec(
-      db.find({ type: 'Request' }).sort({ modified: -1 }).limit(1),
+      db.find({ type: 'Request' })!.sort({ modified: -1 }).limit(1),
     );
 
     expect(docs).toEqual([{ _id: 'b', modified: 4, parentId: 'a', type: 'Request' }]);
@@ -137,7 +137,7 @@ describe('agentdb', () => {
       filename,
     });
 
-    expect(await exec(db.find({ type: 'Request' }).sort({ modified: 1 }))).toEqual([
+    expect(await exec(db.find({ type: 'Request' })!.sort({ modified: 1 }))).toEqual([
       { _id: 'req_1', modified: 2, type: 'Request' },
     ]);
 
@@ -146,7 +146,7 @@ describe('agentdb', () => {
     await removeDocs(db, { _id: 'req_1' });
     await persistCachedDatabase(db);
 
-    expect(await exec(db.find({}).sort({ modified: 1 }))).toEqual([
+    expect(await exec(db.find({})!.sort({ modified: 1 }))).toEqual([
       { _id: 'req_3', modified: 5, type: 'Request' },
     ]);
 

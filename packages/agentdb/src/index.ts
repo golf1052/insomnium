@@ -1,3 +1,4 @@
+/* eslint-disable prefer-rest-params -- preserve NeDB-style callback forwarding */
 import { randomBytes } from 'crypto';
 import { EventEmitter } from 'events';
 import fs from 'fs';
@@ -8,7 +9,8 @@ interface DeletedDoc {
   _id: string;
 }
 
-type SerializableDoc = Record<string, any> | DeletedDoc;
+type GenericDocument = Record<string, any> & { _id?: string };
+type SerializableDoc = GenericDocument | DeletedDoc;
 type CompareStrings = (a: string, b: string) => number;
 type Query = Record<string, any>;
 type QueryValue = string | Query | null | undefined;
@@ -101,8 +103,9 @@ function serialize(obj: SerializableDoc) {
       return null;
     }
 
-    if (isDate(this[key])) {
-      return { $$date: this[key].getTime() };
+    const currentValue = this[key];
+    if (isDate(currentValue)) {
+      return { $$date: currentValue.getTime() };
     }
 
     return value;
@@ -186,10 +189,10 @@ function compareNSB(a: number | string | boolean, b: number | string | boolean) 
   return 0;
 }
 
-function compareArrays(a: unknown[], b: unknown[], compareStrings: CompareStrings) {
+function compareArrays(a: unknown[], b: unknown[], compareStrings: CompareStrings): number {
   const max = Math.min(a.length, b.length);
   for (let i = 0; i < max; i += 1) {
-    const comparison = compareThings(a[i], b[i], compareStrings);
+    const comparison: number = compareThings(a[i], b[i], compareStrings);
     if (comparison !== 0) {
       return comparison;
     }
@@ -198,7 +201,7 @@ function compareArrays(a: unknown[], b: unknown[], compareStrings: CompareString
   return compareNSB(a.length, b.length);
 }
 
-function compareThings(a: unknown, b: unknown, compareStrings: CompareStrings = compareNSB) {
+function compareThings(a: unknown, b: unknown, compareStrings: CompareStrings = compareNSB): number {
   if (a === undefined) {
     return b === undefined ? 0 : -1;
   }
@@ -258,7 +261,7 @@ function compareThings(a: unknown, b: unknown, compareStrings: CompareStrings = 
       return keyComparison;
     }
 
-    const comparison = compareThings(
+    const comparison: number = compareThings(
       (a as Record<string, unknown>)[aKeys[i]],
       (b as Record<string, unknown>)[bKeys[i]],
       compareStrings,
@@ -539,7 +542,7 @@ async function crashSafeWriteFile(filename: string, data: string) {
   await fs.promises.rename(tempFilename, filename);
 }
 
-class Persistence<T extends Record<string, any> = Record<string, any>> {
+class Persistence<T extends GenericDocument = GenericDocument> {
   autocompactionIntervalId?: ReturnType<typeof setInterval>;
   readonly afterSerialization: (value: string) => string;
   readonly beforeDeserialization: (value: string) => string;
@@ -638,9 +641,9 @@ class Persistence<T extends Record<string, any> = Record<string, any>> {
         const doc = deserialize(this.beforeDeserialization(item));
         if (doc && '_id' in doc) {
           if ('$$deleted' in doc && doc.$$deleted === true) {
-            dataById.delete(doc._id);
+            dataById.delete(doc._id as string);
           } else {
-            dataById.set(doc._id, doc as T);
+            dataById.set(doc._id as string, doc as T);
           }
         }
       } catch {
@@ -701,7 +704,7 @@ class Persistence<T extends Record<string, any> = Record<string, any>> {
   }
 }
 
-class Cursor<T extends Record<string, any> = Record<string, any>> {
+class Cursor<T extends GenericDocument = GenericDocument> {
   private _limit?: number | null;
   private _sort?: Record<string, number>;
   readonly db: Datastore<T>;
@@ -791,7 +794,7 @@ function normalizeQuery(query?: QueryValue): Query {
   return query;
 }
 
-class Datastore<T extends Record<string, any> = Record<string, any>> extends EventEmitter {
+class Datastore<T extends GenericDocument = GenericDocument> extends EventEmitter {
   static Cursor = Cursor;
   static Persistence = Persistence;
 
@@ -846,7 +849,7 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
   }
 
   resetData(docs: T[] = []) {
-    this.docs = new Map(docs.map(doc => [doc._id, doc]));
+    this.docs = new Map(docs.map(doc => [doc._id as string, doc]));
   }
 
   clearAllData() {
@@ -864,7 +867,7 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
   prepareDocumentForInsertion(newDoc: T) {
     const preparedDoc = deepCopy(newDoc);
     if (preparedDoc._id === undefined) {
-      preparedDoc._id = this.createNewId();
+      (preparedDoc as GenericDocument)._id = this.createNewId();
     }
     checkObject(preparedDoc);
     return preparedDoc;
@@ -875,7 +878,7 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
 
     try {
       preparedDoc = this.prepareDocumentForInsertion(newDoc);
-      this.docs.set(preparedDoc._id, preparedDoc);
+      this.docs.set(preparedDoc._id as string, preparedDoc);
     } catch (err) {
       cb(err as Error);
       return;
@@ -898,6 +901,8 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
     }
   }
 
+  count(query: QueryValue, callback: CountCallback): void;
+  count(query: QueryValue): Cursor<T>;
   count(query: QueryValue, callback?: CountCallback) {
     const cursor = new Cursor(this, query, (err, docs, done) => {
       if (err) {
@@ -916,9 +921,12 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
     return cursor;
   }
 
+  find(query?: QueryValue): Cursor<T>;
+  find(query: QueryValue, callback: FindCallback<T>): void;
+  find(query: QueryValue, projection: unknown, callback: FindCallback<T>): void;
   find(query: QueryValue = {}, projection?: unknown | FindCallback<T>, callback?: FindCallback<T>) {
     if (typeof projection === 'function') {
-      callback = projection;
+      callback = projection as FindCallback<T>;
     }
 
     const cursor = new Cursor(this, query, (err, docs, done) => {
@@ -949,13 +957,13 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
     const normalizedQuery = normalizeQuery(query);
     const multi = normalizedOptions.multi || false;
     const upsert = normalizedOptions.upsert || false;
-    const modifications: Array<{ oldDoc: T; newDoc: T }> = [];
+    const modifications: { oldDoc: T; newDoc: T }[] = [];
 
     try {
       for (const doc of this.getAllData()) {
         if (match(doc, normalizedQuery) && (multi || modifications.length === 0)) {
           const updatedDoc = deepCopy(updateQuery);
-          updatedDoc._id = doc._id;
+          (updatedDoc as GenericDocument)._id = doc._id;
           checkObject(updatedDoc);
           modifications.push({ newDoc: updatedDoc, oldDoc: doc });
         }
@@ -973,8 +981,8 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
     }
 
     for (const { oldDoc, newDoc } of modifications) {
-      this.docs.delete(oldDoc._id);
-      this.docs.set(newDoc._id, newDoc);
+      this.docs.delete(oldDoc._id as string);
+      this.docs.set(newDoc._id as string, newDoc);
     }
 
     const updatedDocs = modifications.map(modification => modification.newDoc);
@@ -1024,8 +1032,8 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
     try {
       for (const doc of this.getAllData()) {
         if (match(doc, normalizedQuery) && (multi || removedDocs.length === 0)) {
-          removedDocs.push({ $$deleted: true, _id: doc._id });
-          this.docs.delete(doc._id);
+          removedDocs.push({ $$deleted: true, _id: doc._id as string });
+          this.docs.delete(doc._id as string);
         }
       }
     } catch (err) {
@@ -1050,6 +1058,7 @@ class Datastore<T extends Record<string, any> = Record<string, any>> extends Eve
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-namespace -- preserve NeDB-compatible type access like Datastore.DataStoreOptions
 namespace Datastore {
   export type DataStoreOptions = InternalDataStoreOptions;
   export type RemoveOptions = InternalRemoveOptions;
@@ -1057,4 +1066,4 @@ namespace Datastore {
   export type UpdateOptions = InternalUpdateOptions;
 }
 
-export = Datastore;
+export default Datastore;
