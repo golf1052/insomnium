@@ -1,7 +1,5 @@
 import express, { urlencoded } from 'express';
-import { Configuration, Provider } from 'oidc-provider';
-// @ts-expect-error no typings available for this module
-import { InvalidGrant } from 'oidc-provider/lib/helpers/errors';
+import { type Configuration, errors, Provider } from 'oidc-provider';
 
 export const oauthRoutes = (port: number) => {
   const clientIDAuthorizationCode = 'authorization_code';
@@ -273,15 +271,15 @@ function registerROPC(oidc: Provider) {
     const params = ctx.oidc.params;
 
     if (!params) {
-      throw new InvalidGrant('invalid params provided');
+      throw new errors.InvalidGrant('invalid params provided');
     }
 
     if (!ctx.oidc.client) {
-      throw new InvalidGrant('invalid client provided');
+      throw new errors.InvalidGrant('invalid client provided');
     }
 
     if (typeof params.username !== 'string' || typeof params.password !== 'string') {
-      throw new InvalidGrant('invalid credentials provided');
+      throw new errors.InvalidGrant('invalid credentials provided');
     }
 
     const account = await ctx.oidc.provider.Account.findAccount(
@@ -289,7 +287,7 @@ function registerROPC(oidc: Provider) {
       params.username
     );
     if (!account) {
-      throw new InvalidGrant('invalid account');
+      throw new errors.InvalidGrant('invalid account');
     }
 
     const grant = new ctx.oidc.provider.Grant({
