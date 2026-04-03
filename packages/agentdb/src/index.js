@@ -586,7 +586,7 @@ class Persistence {
       throw new Error(
         `More than ${Math.floor(
           100 * this.corruptAlertThreshold,
-        )}% of the data file is corrupt, cautiously refusing to start NeDB to prevent dataloss`,
+        )}% of the data file is corrupt, cautiously refusing to start NeDB to prevent data loss`,
       );
     }
 
