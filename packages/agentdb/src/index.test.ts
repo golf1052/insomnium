@@ -5,7 +5,7 @@ import * as path from 'path';
 
 import Datastore = require('./index');
 
-function count<T>(db: Datastore<T>, query: any) {
+function countDocs<T>(db: Datastore<T>, query: any) {
   return new Promise<number>((resolve, reject) => {
     db.count(query, (err, total) => {
       if (err) {
@@ -44,7 +44,7 @@ function insert<T>(db: Datastore<T>, doc: T) {
   });
 }
 
-function update<T>(db: Datastore<T>, query: any, doc: T) {
+function updateDoc<T>(db: Datastore<T>, query: any, doc: T) {
   return new Promise<number>((resolve, reject) => {
     db.update(query, doc, (err, numAffected) => {
       if (err) {
@@ -57,7 +57,7 @@ function update<T>(db: Datastore<T>, query: any, doc: T) {
   });
 }
 
-function remove<T>(db: Datastore<T>, query: any, options?: { multi?: boolean }) {
+function removeDocs<T>(db: Datastore<T>, query: any, options?: { multi?: boolean }) {
   return new Promise<number>((resolve, reject) => {
     db.remove(query, options || {}, (err, numRemoved) => {
       if (err) {
@@ -102,10 +102,10 @@ describe('agentdb', () => {
     await insert(db, { _id: 'b', modified: 4, parentId: 'a', type: 'Request' });
     await insert(db, { _id: 'c', modified: 2, parentId: null, type: 'Environment' });
 
-    expect(await count(db, { parentId: null })).toBe(2);
-    expect(await count(db, { modified: { $gt: 1 } })).toBe(2);
-    expect(await count(db, { _id: { $in: ['a', 'b'] } })).toBe(2);
-    expect(await count(db, { _id: { $nin: ['a', 'b'] } })).toBe(1);
+    expect(await countDocs(db, { parentId: null })).toBe(2);
+    expect(await countDocs(db, { modified: { $gt: 1 } })).toBe(2);
+    expect(await countDocs(db, { _id: { $in: ['a', 'b'] } })).toBe(2);
+    expect(await countDocs(db, { _id: { $nin: ['a', 'b'] } })).toBe(1);
 
     const docs = await exec(
       db.find({ type: 'Request' }).sort({ modified: -1 }).limit(1),
@@ -142,8 +142,8 @@ describe('agentdb', () => {
     ]);
 
     await insert(db, { _id: 'req_3', modified: 4, type: 'Request' });
-    await update(db, { _id: 'req_3' }, { _id: 'req_3', modified: 5, type: 'Request' });
-    await remove(db, { _id: 'req_1' });
+    await updateDoc(db, { _id: 'req_3' }, { _id: 'req_3', modified: 5, type: 'Request' });
+    await removeDocs(db, { _id: 'req_1' });
     await persistCachedDatabase(db);
 
     expect(await exec(db.find({}).sort({ modified: 1 }))).toEqual([
