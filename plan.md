@@ -52,13 +52,22 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - Completed `httpsnippet-major-upgrade`.
   - Updated `httpsnippet` to `^3.0.10` in `packages/insomnia` and `packages/insomnia-send-request`.
   - Existing generate-code and copy-as-cURL integrations remained compatible without code changes.
+- `electron-toolchain-upgrade` and `node-libcurl-compatibility` are currently blocked in this environment.
+  - Attempted to align the toolchain around Electron 41 and Node 20, then upgrade `@getinsomnia/node-libcurl`.
+  - Repeated installs failed during `node-pre-gyp` startup with a `tar` / `minipass` crash under both the current Node 24 runtime and a Node 20.20.2 retry.
+  - The toolchain file edits were intentionally reverted instead of committing a broken install state.
+- Completed `smoke-test-and-shared-tooling-security-upgrades`.
+  - Updated `@grpc/grpc-js` to `^1.14.3` in `packages/insomnia` and `packages/insomnia-smoke-test`.
+  - Updated `mocha` to `^10.8.2` in `packages/insomnia`.
+  - Updated `graphql` to `^16.13.2` and `ws` to `^8.20.0` in `packages/insomnia` and `packages/insomnia-smoke-test`.
+  - Updated `express` to `^4.22.1` in `packages/insomnia-smoke-test`.
 - `npm audit` after this wave:
-  - 95 total vulnerabilities
-  - 5 critical
-  - 61 high
-  - 16 moderate
-  - 13 low
-- Next active backlog item: `electron-toolchain-upgrade`.
+  - 83 total vulnerabilities
+  - 4 critical
+  - 57 high
+  - 12 moderate
+  - 10 low
+- Next active backlog item: `manual-review-no-fix-remediation`.
 
 ## Highest-priority findings
 
@@ -136,18 +145,18 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 1. `httpsnippet-major-upgrade` - done
     - Move `httpsnippet` to a current safe major in both app packages.
     - Validate generated request snippets and any export/copy workflows that depend on it.
-1. `electron-toolchain-upgrade` - in progress
+1. `electron-toolchain-upgrade` - blocked
     - Upgrade `electron`, `electron-builder`, Windows packaging helpers, and the surrounding Forge/build-tooling stack.
     - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
-1. `node-libcurl-compatibility`
-   - Upgrade `@getinsomnia/node-libcurl` alongside the chosen Electron/Node versions.
-   - Verify native build, development startup, and packaging behavior.
-1. `smoke-test-and-shared-tooling-security-upgrades`
-   - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
-   - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.
-1. `manual-review-no-fix-remediation`
-   - Investigate `apiconnect-wsdl`, `grpc-reflection-js`, `svg-text-to-path`, and other audit items without a clean automatic path.
-   - Clean up stale NeDB references separately so the backlog reflects the current `agentdb` architecture.
+1. `node-libcurl-compatibility` - blocked
+    - Upgrade `@getinsomnia/node-libcurl` alongside the chosen Electron/Node versions.
+    - Verify native build, development startup, and packaging behavior.
+1. `smoke-test-and-shared-tooling-security-upgrades` - done
+    - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
+    - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.
+1. `manual-review-no-fix-remediation` - in progress
+    - Investigate `apiconnect-wsdl`, `grpc-reflection-js`, `svg-text-to-path`, and other audit items without a clean automatic path.
+    - Clean up stale NeDB references separately so the backlog reflects the current `agentdb` architecture.
 1. `transitive-overrides-and-reaudit`
    - Revisit `overrides` such as `protobufjs`.
    - Add targeted overrides only where direct upgrades are insufficient, then re-audit to measure residual risk.

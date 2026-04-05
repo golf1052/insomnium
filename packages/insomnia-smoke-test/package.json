@@ -22,7 +22,7 @@
     "test:cli": "concurrently --names server,cli --success first --kill-others \"esr server/index.ts\" \"npm run cli\""
   },
   "devDependencies": {
-    "@grpc/grpc-js": "^1.6.7",
+    "@grpc/grpc-js": "^1.14.3",
     "@grpc/proto-loader": "^0.7.7",
     "@jest/globals": "^28.1.0",
     "@playwright/test": "^1.36.0",
@@ -37,15 +37,15 @@
     "cross-env": "^7.0.3",
     "esbuild-runner": "2.2.2",
     "execa": "^5.0.0",
-    "express": "^4.17.1",
+    "express": "^4.22.1",
     "express-basic-auth": "^1.2.0",
-    "graphql-http": "^1.21.0",
     "faker": "^5.1.0",
-    "graphql": "^16.7.1",
+    "graphql": "^16.13.2",
+    "graphql-http": "^1.21.0",
     "jest": "^28.1.0",
     "oidc-provider": "^8.8.1",
     "uuid": "^8.3.2",
-    "ws": "^8.13.0",
+    "ws": "^8.20.0",
     "xvfb-maybe": "^0.2.1"
   },
   "description": "[![Playwright](https://img.shields.io/badge/playwright-blue.svg?style=for-the-badge&logo=playwright)](https://github.com/microsoft/playwright)",
