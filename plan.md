@@ -54,7 +54,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - Completed `httpsnippet-major-upgrade`.
   - Updated `httpsnippet` to `^3.0.10` in `packages/insomnia` and `packages/insomnia-send-request`.
   - Existing generate-code and copy-as-cURL integrations remained compatible without code changes.
-- Initial `electron-toolchain-upgrade` and `node-libcurl-compatibility` attempts were blocked in this environment.
+- Initial `electron-toolchain-upgrade` and `node-libcurl-compatibility` attempts hit environment-specific install failures.
   - Attempted to align the toolchain around Electron 41 and Node 20, then upgrade `@getinsomnia/node-libcurl`.
   - Repeated installs failed during `node-pre-gyp` startup with a `tar` / `minipass` crash under both the current Node 24 runtime and a Node 20.20.2 retry.
   - The toolchain file edits were intentionally reverted instead of committing a broken install state, and that failed path was later superseded by the successful combined Electron 41 / `node-libcurl` 3.2.1 upgrade described below.
@@ -68,7 +68,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Updated `electron-builder` and `electron-builder-squirrel-windows` to `^26.8.1` in `packages/insomnia`.
   - Updated `packages/insomnia/electron-builder.config.js` for the newer builder schema (`mac.notarize` and Linux `desktop.entry`).
   - Validated packaging with `BUILD_TARGETS=portable npm run app-package`.
-  - The remaining blocked scope is the Electron major bump and the `@getinsomnia/node-libcurl` compatibility work.
+  - That earlier subset stopped at the Electron major bump and the `@getinsomnia/node-libcurl` compatibility work, which were later completed in the combined upgrade wave below.
 - Completed the safe app/tooling direct-upgrade subset.
   - Updated `react-router-dom` to `^6.30.3` and `vite` to `^4.5.14` in `packages/insomnia`.
   - Updated root `svgo` to `^2.8.2`.
@@ -86,13 +86,13 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Verified `jshint` is already on its latest `2.13.6` release, while npm audit still suggests an unusable downgrade to `0.5.9`.
   - Verified `mocha` is not fixable through a normal forward upgrade in the current audit data; the advisory range still includes the latest `11.7.5` line.
   - Verified `svg-text-to-path` still has no fix available, even on its latest `2.1.0` release.
-  - Investigated `apiconnect-wsdl@2.0.36`, but its `>=18.7.0 <21.0.0` engine range conflicts with `@electron/rebuild@4.0.3` requiring Node `>=22.12.0`, so there is no single engine window that satisfies both under the repo's `engine-strict=true` installs.
+  - Investigated `apiconnect-wsdl@2.0.36`, but its `>=18.7.0 <21.0.0` engine range conflicts with the repo's current Node 24.x toolchain, so there is no single engine window that satisfies both under the repo's `engine-strict=true` installs.
   - Updated the checked-in Node pins to match the current installable toolchain instead of the stale Node 18 values.
 - Reinvestigated `node-libcurl-compatibility` against the current `@getinsomnia/node-libcurl@3.2.1` line.
   - `3.2.1` no longer hits the earlier `tar` / `minipass` startup crash and its package layout still matches the repo's current usage and test mocks.
   - The package now requires Node `>=24.14.0`, which matches the repo's current `.nvmrc`, but Kong does not publish a Windows prebuilt binary for `electron-v25.2`, so installs fall back to a source build.
   - The Windows source-build path got past the Python 3.12 `distutils` issue with a throwaway virtualenv, then failed in `curl-for-windows` because `nasm` is not present in this environment.
-  - This means the upgrade path is now blocked by Electron 25 being outside the upstream prebuilt-binary window and by missing Windows native-build prerequisites, not by the old `node-pre-gyp` crash.
+  - At that point the upgrade path was still constrained by Electron 25 being outside the upstream prebuilt-binary window and by missing Windows native-build prerequisites, not by the old `node-pre-gyp` crash.
 - Completed `electron-toolchain-upgrade` and `node-libcurl-compatibility` together.
   - Used the public upstream pairing from `Kong/insomnia#9734` as the base path, then moved one Electron patch level farther to `41.1.1` after confirming it shares ABI `145` with `41.0.3`.
   - Updated `packages/insomnia` to `electron@41.1.1`.
@@ -110,8 +110,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `mocha` still reports a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path.
   - `jshint` is already on its latest release, and the current audit recommendation is an unusable downgrade to `0.5.9`.
   - `svg-text-to-path` still has no fix available, even on its latest release.
-  - `apiconnect-wsdl` does have a newer `2.0.36` line, but it conflicts with the Node `>=22.12.0` requirement introduced by the current builder stack.
-- Remaining active backlog items: `electron-toolchain-upgrade` and `node-libcurl-compatibility`.
+  - `apiconnect-wsdl` does have a newer `2.0.36` line, but it conflicts with the repo's current Node 24.x toolchain.
+- No active implementation backlog items remain; the remaining risk is concentrated in no-fix/manual-review packages and future major-upgrade follow-ups.
 
 ## Highest-priority findings
 
@@ -132,7 +132,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
 
 - `vite` remains as a moderate direct finding after the safe `4.x` upgrade, and it still carries the residual `esbuild` advisory through its nested `esbuild@0.18.20`; the next audit fix path requires a major jump
-- `apiconnect-wsdl` remains a moderate direct finding, but its newer line is currently blocked by an install-time Node engine conflict with the builder stack
+- `apiconnect-wsdl` remains a moderate direct finding, but its newer line is currently blocked by an install-time Node engine conflict with the repo's current Node 24.x toolchain
 - The previously moderate `@grpc/grpc-js`, `graphql`, `js-yaml`, `postcss`, and `yaml` findings have been cleared.
 
 ### 4. High-risk platform/toolchain area
@@ -148,7 +148,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 - `@getinsomnia/node-libcurl` has been upgraded to `3.2.1` and now installs successfully from the upstream Electron 41 Windows prebuild path in this repo
 - Electron `41.1.1` is running against the ABI-compatible published `electron-v41.0` `node-libcurl` prebuild, because upstream `3.2.1` assets still stop at `41.0.x` on Windows
-- `apiconnect-wsdl` does have a newer `2.0.36` line, but it is blocked by a Node engine conflict with the current builder stack
+- `apiconnect-wsdl` does have a newer `2.0.36` line, but it is blocked by a Node engine conflict with the repo's current Node 24.x toolchain
 - `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is not a usable forward fix
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
 - Historical NeDB follow-up is now down to legacy fixture naming and compatibility language, not a current direct-package audit item
