@@ -100,12 +100,16 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Replaced the stale `.npmrc` Electron target with explicit root `install-libcurl-electron` / `install-libcurl-node` scripts plus a `postinstall` hook.
   - The Electron install hook intentionally targets `41.0.3`, because `@getinsomnia/node-libcurl@3.2.1` publishes Windows prebuilt assets for `electron-v41.0` but not `electron-v41.1`, while Electron `41.1.1` remains ABI-compatible with that published prebuilt.
   - `npm install`, `npm run lint`, `npm run type-check`, `npm test`, `npm run app-build`, and `BUILD_TARGETS=portable npm run app-package` all passed on Windows after the combined upgrade.
+- Ran `npm audit fix` after the Electron / `node-libcurl` wave.
+  - The non-breaking audit remediation only updated `package-lock.json`.
+  - That lockfile refresh re-hoisted `yaml`, so `packages/insomnia/jest.config.js` needed a follow-up mapper fix to point at the root `node_modules` path instead of a workspace-local one.
+  - Validation still passed after that config adjustment.
 - `npm audit` after this wave:
-  - 44 total vulnerabilities
-  - 4 critical
-  - 20 high
-  - 12 moderate
-  - 8 low
+  - 22 total vulnerabilities
+  - 1 critical
+  - 12 high
+  - 4 moderate
+  - 5 low
 - Manual-review findings:
   - `mocha` still reports a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path.
   - `jshint` is already on its latest release, and the current audit recommendation is an unusable downgrade to `0.5.9`.
@@ -117,17 +121,20 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 ### 1. Critical direct dependencies
 
-- `@stoplight/spectral-core` with related `@stoplight/spectral-formats` and `@stoplight/spectral-rulesets`
-  - Declared in `packages/insomnia/package.json` and `packages/insomnia-send-request/package.json`
-  - Audit still indicates major-version remediation and transitive issues through `jsonpath-plus`, `minimatch`, and `nimma`
-- The previously critical direct `httpsnippet` and `jsonpath-plus` findings have been cleared by the completed upgrade waves.
+- No critical direct dependencies remain after the Electron / `node-libcurl` upgrade and the follow-up `npm audit fix`.
+- The remaining single critical issue is transitive under `apiconnect-wsdl` via `xmldom`, and the direct package itself is still reported as a moderate finding because the clean forward path remains blocked by the repo's current Node 24.x toolchain.
 
 ### 2. Remaining high direct dependencies
 
+- Spectral stack direct highs:
+  - `@stoplight/spectral-core`
+  - `@stoplight/spectral-formats`
+  - `@stoplight/spectral-ruleset-bundler`
+  - `@stoplight/spectral-rulesets`
 - App/tooling still showing direct high findings: `jshint`
 - `mocha` still shows a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path
 - The previous platform-coupled direct findings on `electron` and `@getinsomnia/node-libcurl` have been cleared by the Electron 41 / `node-libcurl` 3.2.1 upgrade
-- The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, and `grpc-reflection-js` findings have been cleared.
+- The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, `grpc-reflection-js`, and `@vitejs/plugin-react` findings have been cleared.
 
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
 

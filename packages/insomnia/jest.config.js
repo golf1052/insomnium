@@ -20,7 +20,7 @@ module.exports = {
     '\\.(css|less|png|svg)$': '<rootDir>/src/__mocks__/dummy.ts',
     'styled-components': path.join(__dirname, '../../node_modules/styled-components'),
     'jsonpath-plus': path.join(__dirname, '../../node_modules/jsonpath-plus/dist/index-node-cjs.cjs'),
-    '^yaml$': path.join(__dirname, 'node_modules/yaml/dist/index.js'),
+    '^yaml$': path.join(__dirname, '../../node_modules/yaml/dist/index.js'),
   },
   collectCoverage: !!process.env.CI,
   collectCoverageFrom: [
