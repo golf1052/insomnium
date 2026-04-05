@@ -61,12 +61,16 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Updated `mocha` to `^10.8.2` in `packages/insomnia`.
   - Updated `graphql` to `^16.13.2` and `ws` to `^8.20.0` in `packages/insomnia` and `packages/insomnia-smoke-test`.
   - Updated `express` to `^4.22.1` in `packages/insomnia-smoke-test`.
+- Completed the safe packaging-helper subset of `electron-toolchain-upgrade`.
+  - Removed the unused root `@electron-forge/cli` dependency.
+  - Updated `electron-builder` and `electron-builder-squirrel-windows` to `^24.13.3` in `packages/insomnia`.
+  - The remaining blocked scope is the Electron major bump and the `@getinsomnia/node-libcurl` compatibility work.
 - `npm audit` after this wave:
-  - 83 total vulnerabilities
+  - 66 total vulnerabilities
   - 4 critical
-  - 57 high
-  - 12 moderate
-  - 10 low
+  - 42 high
+  - 11 moderate
+  - 9 low
 - Next active backlog item: `manual-review-no-fix-remediation`.
 
 ## Highest-priority findings
@@ -146,7 +150,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
     - Move `httpsnippet` to a current safe major in both app packages.
     - Validate generated request snippets and any export/copy workflows that depend on it.
 1. `electron-toolchain-upgrade` - blocked
-    - Upgrade `electron`, `electron-builder`, Windows packaging helpers, and the surrounding Forge/build-tooling stack.
+    - Upgrade `electron`, the remaining runtime/toolchain alignment files, and any packaging pieces still tied to the Electron jump.
+    - `electron-builder` and `electron-builder-squirrel-windows` were already moved to `^24.13.3`, and the unused root `@electron-forge/cli` dependency was removed.
     - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
 1. `node-libcurl-compatibility` - blocked
     - Upgrade `@getinsomnia/node-libcurl` alongside the chosen Electron/Node versions.
