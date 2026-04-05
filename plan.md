@@ -61,20 +61,22 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Updated `mocha` to `^10.8.2` in `packages/insomnia`.
   - Updated `graphql` to `^16.13.2` and `ws` to `^8.20.0` in `packages/insomnia` and `packages/insomnia-smoke-test`.
   - Updated `express` to `^4.22.1` in `packages/insomnia-smoke-test`.
-- Completed the safe packaging-helper subset of `electron-toolchain-upgrade`.
+- Completed the packaging-helper subset of `electron-toolchain-upgrade`.
   - Removed the unused root `@electron-forge/cli` dependency.
-  - Updated `electron-builder` and `electron-builder-squirrel-windows` to `^24.13.3` in `packages/insomnia`.
+  - Updated `electron-builder` and `electron-builder-squirrel-windows` to `^26.8.1` in `packages/insomnia`.
+  - Updated `packages/insomnia/electron-builder.config.js` for the newer builder schema (`mac.notarize` and Linux `desktop.entry`).
+  - Validated packaging with `BUILD_TARGETS=portable npm run app-package`.
   - The remaining blocked scope is the Electron major bump and the `@getinsomnia/node-libcurl` compatibility work.
 - Completed the safe app/tooling direct-upgrade subset.
   - Updated `react-router-dom` to `^6.30.3` and `vite` to `^4.5.14` in `packages/insomnia`.
   - Updated root `svgo` to `^2.8.2`.
   - Adjusted route error handling to match the newer `react-router-dom` `ErrorResponse` typing.
 - `npm audit` after this wave:
-  - 63 total vulnerabilities
+  - 54 total vulnerabilities
   - 4 critical
-  - 37 high
+  - 30 high
   - 12 moderate
-  - 10 low
+  - 8 low
 - Next active backlog item: `manual-review-no-fix-remediation`.
 
 ## Highest-priority findings
@@ -88,10 +90,10 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 ### 2. High direct dependencies with straightforward remediation paths
 
-- App/tooling still showing direct high findings: `jshint`, `mocha`, `electron-builder`, `electron-builder-squirrel-windows`
+- App/tooling still showing direct high findings: `jshint`, `mocha`
 - Platform-coupled direct highs: `electron`, `@getinsomnia/node-libcurl`
 - Special-case direct high with no clean audit fix: `grpc-reflection-js`
-- The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, and `ws` findings have been cleared.
+- The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, and `electron-builder-squirrel-windows` findings have been cleared.
 - `packages/insomnia/package.json` also pins `protobufjs` in `overrides`, which should be reevaluated after direct dependency upgrades
 
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
@@ -111,7 +113,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `shell.nix`
   - packaging/build behavior
   - native module compatibility for `@getinsomnia/node-libcurl`
-- The unused root `@electron-forge/cli` dependency has already been removed, so the remaining build-chain exposure is concentrated in Electron, packaging helpers, and native-module compatibility
+- The unused root `@electron-forge/cli` dependency has already been removed and the packaging helpers are now on `26.8.1`, so the remaining build-chain exposure is concentrated in Electron and native-module compatibility
 
 ### 5. Special investigation items
 
@@ -148,7 +150,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
     - Validate generated request snippets and any export/copy workflows that depend on it.
 1. `electron-toolchain-upgrade` - blocked
     - Upgrade `electron`, the remaining runtime/toolchain alignment files, and any packaging pieces still tied to the Electron jump.
-    - `electron-builder` and `electron-builder-squirrel-windows` were already moved to `^24.13.3`, and the unused root `@electron-forge/cli` dependency was removed.
+    - `electron-builder` and `electron-builder-squirrel-windows` were moved to `^26.8.1`, the package config was adapted to the new schema, and the unused root `@electron-forge/cli` dependency was removed.
     - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
 1. `node-libcurl-compatibility` - blocked
     - Upgrade `@getinsomnia/node-libcurl` alongside the chosen Electron/Node versions.

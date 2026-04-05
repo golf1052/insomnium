@@ -61,9 +61,7 @@ const config = {
     extendInfo: {
       NSRequiresAquaSystemAppearance: false,
     },
-    notarize: {
-      teamId: "679M9248WK",
-    },
+    notarize: true,
     asarUnpack: ["node_modules/@getinsomnia/node-libcurl"],
   },
   dmg: {
@@ -109,11 +107,13 @@ const config = {
     synopsis: "The Collaborative API Client and Design Tool",
     category: "Development",
     desktop: {
-      Name: "Insomnium",
-      Comment:
-        "Insomnium is a cross-platform REST client, built on top of Electron.",
-      Categories: "Development",
-      Keywords: "GraphQL;REST;gRPC;SOAP;openAPI;GitOps;",
+      entry: {
+        Name: "Insomnium",
+        Comment:
+          "Insomnium is a cross-platform REST client, built on top of Electron.",
+        Categories: "Development",
+        Keywords: "GraphQL;REST;gRPC;SOAP;openAPI;GitOps;",
+      },
     },
     target: [
       {
