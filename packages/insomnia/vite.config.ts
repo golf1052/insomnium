@@ -19,7 +19,6 @@ export default defineConfig(({ mode }) => {
     base: __DEV__ ? '/' : './',
     define: {
       __DEV__: JSON.stringify(__DEV__),
-      'process.type': JSON.stringify('renderer'),
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.INSOMNIA_ENV': JSON.stringify(mode),
     },
