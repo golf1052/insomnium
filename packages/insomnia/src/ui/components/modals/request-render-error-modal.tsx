@@ -19,6 +19,24 @@ export interface RequestRenderErrorModalHandle {
   hide: () => void;
 }
 
+export const getRequestRenderErrorDetails = (
+  request: Request | WebSocketRequest | GrpcRequest | null,
+  error: RenderError | null,
+) => {
+  const fullPath = error?.path ? `Request.${error.path}` : 'Request';
+  const result = request && error?.path ? JSONPath({ json: request, path: `$.${error.path}` }) : [];
+  const template = result.length ? result[0] : null;
+  const locationLabel = typeof template === 'string' && template.includes('\n')
+    ? `line ${error?.location.line} of`
+    : null;
+
+  return {
+    fullPath,
+    locationLabel,
+    template,
+  };
+};
+
 export const RequestRenderErrorModal = forwardRef<RequestRenderErrorModalHandle, ModalProps>((_, ref) => {
   const modalRef = useRef<ModalHandle>(null);
   const [state, setState] = useState<RequestRenderErrorModalOptions>({
@@ -37,10 +55,7 @@ export const RequestRenderErrorModal = forwardRef<RequestRenderErrorModalHandle,
     },
   }), []);
 
-  const fullPath = `Request.${error?.path}`;
-  const result = JSONPath({ json: request, path: `$.${error?.path}` });
-  const template = result && result.length ? result[0] : null;
-  const locationLabel = template?.includes('\n') ? `line ${error?.location.line} of` : null;
+  const { fullPath, locationLabel } = getRequestRenderErrorDetails(request, error);
 
   return (
     <Modal ref={modalRef}>

@@ -27,6 +27,20 @@ import { AlertModal } from '../modals/alert-modal';
 import { GenerateCodeModal } from '../modals/generate-code-modal';
 import { RequestSettingsModal } from '../modals/request-settings-modal';
 
+interface HTTPSnippetInstance {
+  convert: (target: string, client: string) => string | null | undefined;
+}
+
+interface HTTPSnippetConstructor {
+  new (har: unknown): HTTPSnippetInstance;
+}
+
+interface CopyRequestAsCurlDependencies {
+  exportHarRequestFn?: typeof exportHarRequest;
+  loadHTTPSnippet?: () => Promise<{ default: HTTPSnippetConstructor }>;
+  writeText?: (text: string) => void | Promise<void>;
+}
+
 interface Props extends Omit<DropdownProps, 'children'> {
   activeEnvironment: Environment;
   activeProject: Project;
@@ -34,6 +48,24 @@ interface Props extends Omit<DropdownProps, 'children'> {
   request: Request | GrpcRequest | WebSocketRequest;
   requestGroup?: RequestGroup;
 }
+
+export const copyRequestAsCurl = async (
+  requestId: string,
+  environmentId: string,
+  deps: CopyRequestAsCurlDependencies = {},
+) => {
+  const loadHTTPSnippet = deps.loadHTTPSnippet || (() => import('httpsnippet') as Promise<{ default: HTTPSnippetConstructor }>);
+  const HTTPSnippet = (await loadHTTPSnippet()).default;
+  const har = await (deps.exportHarRequestFn || exportHarRequest)(requestId, environmentId);
+  const snippet = har ? new HTTPSnippet(har) : null;
+  const cmd = snippet?.convert('shell', 'curl');
+
+  if (cmd) {
+    await (deps.writeText || (text => window.clipboard.writeText(text)))(cmd);
+  }
+
+  return cmd || null;
+};
 
 export const RequestActionsDropdown = ({
   activeEnvironment,
@@ -109,14 +141,7 @@ export const RequestActionsDropdown = ({
 
   const copyAsCurl = async () => {
     try {
-      const har = await exportHarRequest(request._id, activeEnvironment._id);
-      const HTTPSnippet = (await import('httpsnippet')).default;
-      const snippet = new HTTPSnippet(har);
-      const cmd = snippet.convert('shell', 'curl');
-
-      if (cmd) {
-        window.clipboard.writeText(cmd);
-      }
+      await copyRequestAsCurl(request._id, activeEnvironment._id);
     } catch (err) {
       showModal(AlertModal, {
         title: 'Could not generate cURL',

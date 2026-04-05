@@ -1,5 +1,5 @@
 import { IncomingMessage, Server } from 'http';
-import { Socket } from 'net';
+import { Duplex } from 'stream';
 import { WebSocket, WebSocketServer } from 'ws';
 
 /**
@@ -50,11 +50,11 @@ const handleConnection = (ws: WebSocket, req: IncomingMessage) => {
     console.log('WebSocket connection was closed');
   });
 };
-const redirectOnSuccess = (socket: Socket) => {
+const redirectOnSuccess = (socket: Duplex) => {
   socket.end('HTTP/1.1 302 Found\r\nLocation: ws://localhost:4010/\r\n\r\n');
   return;
 };
-const return401withBody = (socket: Socket) => {
+const return401withBody = (socket: Duplex) => {
   socket.end(`HTTP/1.1 401 Unauthorized
 
   <!doctype html>
@@ -67,7 +67,7 @@ const return401withBody = (socket: Socket) => {
   </html>`);
   return;
 };
-const upgrade = (wss: WebSocketServer, request: IncomingMessage, socket: Socket, head: Buffer) => {
+const upgrade = (wss: WebSocketServer, request: IncomingMessage, socket: Duplex, head: Buffer) => {
   if (request.url === '/redirect') {
     return redirectOnSuccess(socket);
   }

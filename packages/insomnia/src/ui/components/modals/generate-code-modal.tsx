@@ -12,9 +12,9 @@ import { ModalFooter } from '../base/modal-footer';
 import { ModalHeader } from '../base/modal-header';
 import { CodeEditor, CodeEditorHandle } from '../codemirror/code-editor';
 
-const defaultTarget = '{"key":"shell","title":"Shell","extname":".sh","default":"curl","clients":[{"key":"curl","title":"cURL","link":"http://curl.haxx.se/","description":"cURL is a command line tool and library for transferring data with URL syntax"},{"key":"httpie","title":"HTTPie","link":"http://httpie.org/","description":"a CLI, cURL-like tool for humans"},{"key":"wget","title":"Wget","link":"https://www.gnu.org/software/wget/","description":"a free software package for retrieving files using HTTP, HTTPS"}]}';
+const defaultTarget = JSON.parse('{"key":"shell","title":"Shell","extname":".sh","default":"curl","clients":[{"key":"curl","title":"cURL","link":"http://curl.haxx.se/","description":"cURL is a command line tool and library for transferring data with URL syntax"},{"key":"httpie","title":"HTTPie","link":"http://httpie.org/","description":"a CLI, cURL-like tool for humans"},{"key":"wget","title":"Wget","link":"https://www.gnu.org/software/wget/","description":"a free software package for retrieving files using HTTP, HTTPS"}]}') as HTTPSnippetTarget;
 
-const defaultClient = '{"key":"curl","title":"cURL","link":"http://curl.haxx.se/","description":"cURL is a command line tool and library for transferring data with URL syntax"}';
+const defaultClient = JSON.parse('{"key":"curl","title":"cURL","link":"http://curl.haxx.se/","description":"cURL is a command line tool and library for transferring data with URL syntax"}') as HTTPSnippetClient;
 
 const MODE_MAP: Record<string, string> = {
   c: 'clike',
@@ -45,19 +45,89 @@ export interface GenerateCodeModalHandle {
   show: (options: GenerateCodeModalOptions) => void;
   hide: () => void;
 }
+
+interface HTTPSnippetInstance {
+  convert: (target: string, client: string) => string | null | undefined;
+}
+
+interface HTTPSnippetConstructor {
+  new (har: unknown): HTTPSnippetInstance;
+  availableTargets: () => HTTPSnippetTarget[];
+}
+
+interface GenerateCodeDependencies {
+  exportHarRequestFn?: typeof exportHarRequest;
+  loadHTTPSnippet?: () => Promise<{ default: HTTPSnippetConstructor }>;
+}
+
+export function parseStoredGenerateCodeOption<T>(storedValue: string | null, fallback: T): T {
+  try {
+    return storedValue ? JSON.parse(storedValue) as T : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+export const resolveGenerateCodeSelection = (
+  targets: HTTPSnippetTarget[],
+  target?: HTTPSnippetTarget,
+  client?: HTTPSnippetClient,
+) => {
+  const targetOrFallback = target || targets.find(t => t.key === 'shell') as HTTPSnippetTarget;
+  const clientOrFallback = client || targetOrFallback?.clients.find(t => t.key === 'curl') as HTTPSnippetClient;
+  const addContentLength = Boolean((TO_ADD_CONTENT_LENGTH[targetOrFallback?.key] || []).find(c => c === clientOrFallback?.key));
+
+  return {
+    addContentLength,
+    client: clientOrFallback,
+    target: targetOrFallback,
+  };
+};
+
+export const generateCodeSnippet = async (
+  request: Request,
+  environmentId: string,
+  target?: HTTPSnippetTarget,
+  client?: HTTPSnippetClient,
+  deps: GenerateCodeDependencies = {},
+): Promise<State | null> => {
+  const loadHTTPSnippet = deps.loadHTTPSnippet || (() => import('httpsnippet') as Promise<{ default: HTTPSnippetConstructor }>);
+  const HTTPSnippet = (await loadHTTPSnippet()).default;
+  const targets = HTTPSnippet.availableTargets();
+  const selection = resolveGenerateCodeSelection(targets, target, client);
+  const har = await (deps.exportHarRequestFn || exportHarRequest)(
+    request._id,
+    environmentId,
+    selection.addContentLength,
+  );
+
+  if (!har || !selection.target || !selection.client) {
+    return null;
+  }
+
+  const snippet = new HTTPSnippet(har);
+  const cmd = snippet.convert(selection.target.key, selection.client.key) || '';
+
+  return {
+    request,
+    cmd,
+    client: selection.client,
+    target: selection.target,
+    targets,
+  };
+};
+
 export const GenerateCodeModal = forwardRef<GenerateCodeModalHandle, Props>((props, ref) => {
   const modalRef = useRef<ModalHandle>(null);
   const editorRef = useRef<CodeEditorHandle>(null);
-
-  let storedTarget: HTTPSnippetTarget | undefined;
-  let storedClient: HTTPSnippetClient | undefined;
-  try {
-    storedTarget = JSON.parse(window.localStorage.getItem('insomnia::generateCode::target') || defaultTarget) as HTTPSnippetTarget;
-  } catch (error) {}
-
-  try {
-    storedClient = JSON.parse(window.localStorage.getItem('insomnia::generateCode::client') || defaultClient) as HTTPSnippetClient;
-  } catch (error) {}
+  const storedTarget = parseStoredGenerateCodeOption(
+    window.localStorage.getItem('insomnia::generateCode::target'),
+    defaultTarget,
+  );
+  const storedClient = parseStoredGenerateCodeOption(
+    window.localStorage.getItem('insomnia::generateCode::client'),
+    defaultClient,
+  );
   const [state, setState] = useState<State>({
     cmd: '',
     request: undefined,
@@ -67,31 +137,16 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalHandle, Props>((pro
   });
 
   const generateCode = useCallback(async (request: Request, target?: HTTPSnippetTarget, client?: HTTPSnippetClient) => {
-    const HTTPSnippet = (await import('httpsnippet')).default;
+    const nextState = await generateCodeSnippet(request, props.environmentId, target, client);
 
-    const targets = HTTPSnippet.availableTargets();
-    const targetOrFallback = target || targets.find(t => t.key === 'shell') as HTTPSnippetTarget;
-    const clientOrFallback = client || targetOrFallback.clients.find(t => t.key === 'curl') as HTTPSnippetClient;
-    // Some clients need a content-length for the request to succeed
-    const addContentLength = Boolean((TO_ADD_CONTENT_LENGTH[targetOrFallback.key] || []).find(c => c === clientOrFallback.key));
-    const har = await exportHarRequest(request._id, props.environmentId, addContentLength);
-    // @TODO Should we throw instead?
-    if (!har) {
+    if (!nextState) {
       return;
     }
-    const snippet = new HTTPSnippet(har);
-    const cmd = snippet.convert(targetOrFallback.key, clientOrFallback.key) || '';
 
-    setState({
-      request,
-      cmd,
-      client:clientOrFallback,
-      target:targetOrFallback,
-      targets,
-    });
+    setState(nextState);
     // Save client/target for next time
-    window.localStorage.setItem('insomnia::generateCode::client', JSON.stringify(clientOrFallback));
-    window.localStorage.setItem('insomnia::generateCode::target', JSON.stringify(targetOrFallback));
+    window.localStorage.setItem('insomnia::generateCode::client', JSON.stringify(nextState.client));
+    window.localStorage.setItem('insomnia::generateCode::target', JSON.stringify(nextState.target));
   }, [props.environmentId]);
 
   useImperativeHandle(ref, () => ({

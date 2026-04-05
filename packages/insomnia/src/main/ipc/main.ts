@@ -42,6 +42,48 @@ export interface MainBridgeAPI {
   insomniaFetch: typeof insomniaFetch;
   showContextMenu: (options: { key: string }) => void;
 }
+
+interface SpectralRunner {
+  run: Spectral['run'];
+  setRuleset: Spectral['setRuleset'];
+}
+
+interface RunSpectralDependencies {
+  bundleRuleset?: typeof bundleAndLoadRuleset;
+  createSpectral?: () => SpectralRunner;
+  fallbackRuleset?: RulesetDefinition;
+  fetchUrl?: (url: string) => ReturnType<typeof axiosRequest>;
+  logError?: (message: string, error: unknown) => void;
+  rulesetFs?: typeof fs;
+}
+
+export async function runSpectral(
+  { contents, rulesetPath }: { contents: string; rulesetPath?: string },
+  deps: RunSpectralDependencies = {},
+) {
+  const spectral = (deps.createSpectral || (() => new Spectral()))();
+  const fallbackRuleset = deps.fallbackRuleset || oas as RulesetDefinition;
+  const fetchUrl = deps.fetchUrl || ((url: string) => axiosRequest({ url, method: 'GET' }));
+
+  if (rulesetPath) {
+    try {
+      const ruleset = await (deps.bundleRuleset || bundleAndLoadRuleset)(rulesetPath, {
+        fs: deps.rulesetFs || fs,
+        fetch: fetchUrl,
+      });
+
+      spectral.setRuleset(ruleset);
+    } catch (err) {
+      (deps.logError || ((message, error) => console.log(message, error)))('Error while parsing ruleset:', err);
+      spectral.setRuleset(fallbackRuleset);
+    }
+  } else {
+    spectral.setRuleset(fallbackRuleset);
+  }
+
+  return spectral.run(contents);
+}
+
 export function registerMainHandlers() {
   ipcMain.handle('insomniaFetch', async (_, options: Parameters<typeof insomniaFetch>[0]) => {
     return insomniaFetch(options);
@@ -110,28 +152,6 @@ export function registerMainHandlers() {
     contents: string;
     rulesetPath?: string;
   }) => {
-    const spectral = new Spectral();
-
-    if (rulesetPath) {
-      try {
-        const ruleset = await bundleAndLoadRuleset(rulesetPath, {
-          fs,
-          fetch: (url: string) => {
-            return axiosRequest({ url, method: 'GET' });
-          },
-        });
-
-        spectral.setRuleset(ruleset);
-      } catch (err) {
-        console.log('Error while parsing ruleset:', err);
-        spectral.setRuleset(oas as RulesetDefinition);
-      }
-    } else {
-      spectral.setRuleset(oas as RulesetDefinition);
-    }
-
-    const diagnostics = await spectral.run(contents);
-
-    return diagnostics;
+    return runSpectral({ contents, rulesetPath });
   });
 }

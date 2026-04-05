@@ -22,10 +22,26 @@ module.exports = {
     'jsonpath-plus': path.join(__dirname, '../../node_modules/jsonpath-plus/dist/index-node-cjs.cjs'),
   },
   collectCoverage: !!process.env.CI,
-  collectCoverageFrom: ['src/account/**/*.ts', 'src/common/**/*.ts', 'src/main/**/*.ts', 'src/models/**/*.ts', 'src/network/**/*.ts', 'src/sync/**/*.ts', 'src/templating/**/*.ts', 'src/utils/**/*.ts'],
+  collectCoverageFrom: [
+    'src/account/**/*.ts',
+    'src/common/**/*.ts',
+    'src/main/**/*.ts',
+    'src/models/**/*.ts',
+    'src/network/**/*.ts',
+    'src/sync/**/*.ts',
+    'src/templating/**/*.ts',
+    'src/utils/**/*.ts',
+    'src/ui/components/dropdowns/request-actions-dropdown.tsx',
+    'src/ui/components/modals/generate-code-modal.tsx',
+    'src/ui/components/modals/request-render-error-modal.tsx',
+    'src/ui/components/templating/local-template-tags.ts',
+  ],
   coverageThreshold: {
     global: {
-      lines: 35,
+      branches: 48,
+      functions: 53,
+      lines: 63,
+      statements: 63,
     },
   },
 };
