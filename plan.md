@@ -104,25 +104,29 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - The non-breaking audit remediation only updated `package-lock.json`.
   - That lockfile refresh re-hoisted `yaml`, so `packages/insomnia/jest.config.js` needed a follow-up mapper fix to point at the root `node_modules` path instead of a workspace-local one.
   - Validation still passed after that config adjustment.
+- Completed `wsdl-importer-migration`.
+  - Replaced the deprecated direct `apiconnect-wsdl` dependency in `packages/insomnia` with `@techspokes/typescript-wsdl-client`.
+  - Reworked the WSDL importer to generate OpenAPI 3.1 from raw WSDL content, preserve the first SOAP service URL as the generated server, and reuse the existing OpenAPI importer instead of rebuilding a Postman collection.
+  - Added a Jest-compatible fallback for the ESM-only TechSpokes package and refreshed the checked-in WSDL fixture outputs to the new OpenAPI-based import shape.
 - `npm audit` after this wave:
-  - 22 total vulnerabilities
-  - 1 critical
+  - 19 total vulnerabilities
+  - 0 critical
   - 12 high
-  - 4 moderate
+  - 2 moderate
   - 5 low
 - Manual-review findings:
   - `mocha` still reports a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path.
   - `jshint` is already on its latest release, and the current audit recommendation is an unusable downgrade to `0.5.9`.
   - `svg-text-to-path` still has no fix available, even on its latest release.
-  - `apiconnect-wsdl` does have a newer `2.0.36` line, but it conflicts with the repo's current Node 24.x toolchain.
+  - The deprecated `apiconnect-wsdl` path and its transitive `xmldom` critical have been cleared by the TechSpokes migration.
 - No active implementation backlog items remain; the remaining risk is concentrated in no-fix/manual-review packages and future major-upgrade follow-ups.
 
 ## Highest-priority findings
 
 ### 1. Critical direct dependencies
 
-- No critical direct dependencies remain after the Electron / `node-libcurl` upgrade and the follow-up `npm audit fix`.
-- The remaining single critical issue is transitive under `apiconnect-wsdl` via `xmldom`, and the direct package itself is still reported as a moderate finding because the clean forward path remains blocked by the repo's current Node 24.x toolchain.
+- No critical vulnerabilities remain after the Electron / `node-libcurl` upgrade, the follow-up `npm audit fix`, and the WSDL importer migration.
+- The previous `apiconnect-wsdl` -> `xmldom` critical path has been cleared by replacing the deprecated WSDL conversion stack.
 
 ### 2. Remaining high direct dependencies
 
@@ -134,13 +138,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - App/tooling still showing direct high findings: `jshint`
 - `mocha` still shows a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path
 - The previous platform-coupled direct findings on `electron` and `@getinsomnia/node-libcurl` have been cleared by the Electron 41 / `node-libcurl` 3.2.1 upgrade
-- The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, `grpc-reflection-js`, and `@vitejs/plugin-react` findings have been cleared.
+- The previously straightforward `apiconnect-wsdl`, `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, `grpc-reflection-js`, and `@vitejs/plugin-react` findings have been cleared.
 
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
 
 - `vite` remains as a moderate direct finding after the safe `4.x` upgrade, and it still carries the residual `esbuild` advisory through its nested `esbuild@0.18.20`; the next audit fix path requires a major jump
-- `apiconnect-wsdl` remains a moderate direct finding, but its newer line is currently blocked by an install-time Node engine conflict with the repo's current Node 24.x toolchain
-- The previously moderate `@grpc/grpc-js`, `graphql`, `js-yaml`, `postcss`, and `yaml` findings have been cleared.
+- The previously moderate `apiconnect-wsdl`, `@grpc/grpc-js`, `graphql`, `js-yaml`, `postcss`, and `yaml` findings have been cleared.
 
 ### 4. High-risk platform/toolchain area
 
@@ -155,7 +158,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 - `@getinsomnia/node-libcurl` has been upgraded to `3.2.1` and now installs successfully from the upstream Electron 41 Windows prebuild path in this repo
 - Electron `41.1.1` is running against the ABI-compatible published `electron-v41.0` `node-libcurl` prebuild, because upstream `3.2.1` assets still stop at `41.0.x` on Windows
-- `apiconnect-wsdl` does have a newer `2.0.36` line, but it is blocked by a Node engine conflict with the repo's current Node 24.x toolchain
+- The WSDL importer now uses `@techspokes/typescript-wsdl-client` to generate OpenAPI 3.1 documents, which are then passed through the existing OpenAPI importer; the deprecated `apiconnect-wsdl` dependency and its `xmldom` critical path are gone
 - `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is not a usable forward fix
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
 - Historical NeDB follow-up is now down to legacy fixture naming and compatibility language, not a current direct-package audit item
@@ -196,7 +199,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
     - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
     - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.
 1. `manual-review-no-fix-remediation` - done
-    - Investigated `apiconnect-wsdl`, `jshint`, `mocha`, `svg-text-to-path`, and the historical NeDB cleanup.
+    - Investigated the `apiconnect-wsdl` path, then later replaced it with the TechSpokes-backed WSDL importer; also reviewed `jshint`, `mocha`, `svg-text-to-path`, and the historical NeDB cleanup.
     - Remaining no-fix/manual-review items are now documented results rather than active upgrade work.
 1. `transitive-overrides-and-reaudit` - done
    - Revisited the historical `protobufjs` override and removed it because it no longer affected the resolved dependency tree.
