@@ -1,53 +1,56 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2018-01-09T23:32:46.908Z",
+  "__export_date": "2026-04-05T09:00:15.889Z",
   "__export_source": "insomnia.importers:v0.1.0",
   "resources": [
     {
+      "_type": "workspace",
+      "_id": "__WORKSPACE_ID__",
+      "parentId": null,
+      "name": "Calculator SOAP API 0.0.0",
+      "description": ""
+    },
+    {
       "parentId": "__WORKSPACE_ID__",
-      "_id": "__GRP_1__",
-      "_type": "request_group",
-      "name": "Calculator",
-      "description": "",
-      "environment": {}
+      "name": "Base environment",
+      "data": {
+        "base_url": "{{ _.scheme }}://{{ _.host }}{{ _.base_path }}"
+      },
+      "_type": "environment",
+      "_id": "__BASE_ENVIRONMENT_ID__"
     },
     {
-      "parentId": "__GRP_1__",
-      "_id": "__GRP_2__",
-      "_type": "request_group",
-      "name": "Calculator",
-      "description": "",
-      "environment": {}
+      "parentId": "__BASE_ENVIRONMENT_ID__",
+      "name": "OpenAPI env www.dneonline.com",
+      "data": {
+        "scheme": "http",
+        "base_path": "/calculator.asmx",
+        "host": "www.dneonline.com"
+      },
+      "_type": "environment",
+      "_id": "env___BASE_ENVIRONMENT_ID___sub__ebb4485d"
     },
     {
-      "parentId": "__GRP_2__",
-      "_id": "__REQ_1__",
-      "_type": "request",
-      "name": "Add",
-      "description": "",
-      "url": "http://www.dneonline.com/calculator.asmx",
-      "method": "POST",
+      "parentId": "__WORKSPACE_ID__",
+      "name": "Adds two integers.",
+      "url": "{{ _.base_url }}/add",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"intA\": 0,\n  \"intB\": 0\n}"
+      },
+      "parameters": [],
       "headers": [
         {
-          "name": "SOAPAction",
-          "value": "http://tempuri.org/Add"
-        },
-        {
           "name": "Content-Type",
-          "value": "text/xml"
-        },
-        {
-          "name": "Accept",
-          "value": "application/xml"
+          "disabled": false,
+          "value": "application/json"
         }
       ],
-      "body": {
-        "mimeType": "text/xml",
-        "text": "\n<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n <soapenv:Header>\n  <!-- The Security element should be removed if WS-Security is not enabled on the SOAP target-url -->\n  <wsse:Security xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\" xmlns:wsu=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">\n   <wsse:UsernameToken>\n    <wsse:Username>string</wsse:Username>\n    <wsse:Password>string</wsse:Password>\n    <wsse:Nonce EncodingType=\"string\">string</wsse:Nonce>\n    <wsu:Created>string</wsu:Created>\n   </wsse:UsernameToken>\n   <wsu:Timestamp wsu:Id=\"string\">\n    <wsu:Created>string</wsu:Created>\n    <wsu:Expires>string</wsu:Expires>\n   </wsu:Timestamp>\n  </wsse:Security>\n </soapenv:Header>\n <soapenv:Body>\n  <tns:Add xmlns:tns=\"http://tempuri.org/\"><!-- mandatory -->\n   <tns:intA><!-- mandatory -->3</tns:intA>\n   <tns:intB><!-- mandatory -->3</tns:intB>\n  </tns:Add>\n </soapenv:Body>\n</soapenv:Envelope>"
-      },
       "authentication": {},
-      "parameters": []
+      "_type": "request",
+      "_id": "req___WORKSPACE_ID__61cc55aa",
+      "method": "POST"
     }
   ]
 }

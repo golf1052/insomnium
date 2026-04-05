@@ -1,29 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import {
-  findWSDLForServiceName,
-  getJsonForWSDL,
-  getSwaggerForService,
-  getWSDLServices,
-} from 'apiconnect-wsdl';
-
-import * as postman from './postman';
+import { convert as convertOpenApi } from './openapi-3';
+import { generateOpenApiFromWsdl, looksLikeWsdl } from './techspokes-wsdl';
 import { convert } from './wsdl';
 
-jest.mock('apiconnect-wsdl', () => ({
-  findWSDLForServiceName: jest.fn(),
-  getJsonForWSDL: jest.fn(),
-  getSwaggerForService: jest.fn(),
-  getWSDLServices: jest.fn(),
-}));
-jest.mock('./postman', () => ({
+jest.mock('./openapi-3', () => ({
   convert: jest.fn(),
 }));
+jest.mock('./techspokes-wsdl', () => ({
+  generateOpenApiFromWsdl: jest.fn(),
+  looksLikeWsdl: jest.fn(),
+}));
 
-const mockFindWSDLForServiceName = jest.mocked(findWSDLForServiceName);
-const mockGetJsonForWSDL = jest.mocked(getJsonForWSDL);
-const mockGetSwaggerForService = jest.mocked(getSwaggerForService);
-const mockGetWSDLServices = jest.mocked(getWSDLServices);
-const mockPostmanConvert = jest.mocked(postman.convert);
+const mockConvertOpenApi = jest.mocked(convertOpenApi);
+const mockGenerateOpenApiFromWsdl = jest.mocked(generateOpenApiFromWsdl);
+const mockLooksLikeWsdl = jest.mocked(looksLikeWsdl);
 
 describe('wsdl importer', () => {
   beforeEach(() => {
@@ -35,70 +25,39 @@ describe('wsdl importer', () => {
   });
 
   it('returns null for inputs that do not look like WSDL', async () => {
+    mockLooksLikeWsdl.mockReturnValue(false);
+
     await expect(convert('<xml />')).resolves.toBeNull();
-    expect(mockGetJsonForWSDL).not.toHaveBeenCalled();
+    expect(mockGenerateOpenApiFromWsdl).not.toHaveBeenCalled();
   });
 
-  it('converts WSDL files through apiconnect-wsdl and the Postman importer', async () => {
+  it('converts WSDL files through TechSpokes and the OpenAPI importer', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const wsdls = [{ filename: 'calculator.wsdl' }];
-    const swagger = {
+    const openApiDocument = {
+      openapi: '3.1.0',
       info: {
-        title: 'Calculator',
+        title: 'Calculator SOAP API',
+        version: '1.0.0',
       },
-      consumes: ['text/xml'],
-      produces: ['application/xml'],
       paths: {
-        '/convert': {
-          post: {
-            operationId: 'Convert',
-            description: 'Convert values',
-            parameters: [{
-              schema: {
-                $ref: '#/definitions/ConvertRequest',
-              },
-            }],
-            'x-ibm-soap': {
-              'soap-action': 'urn:Convert',
-            },
-          },
+        '/add': {
+          post: {},
         },
       },
-      definitions: {
-        ConvertRequest: {
-          example: '<Envelope />',
-        },
-      },
-      'x-ibm-configuration': {
-        assembly: {
-          execute: [{
-            proxy: {
-              'target-url': 'https://example.com/soap',
-            },
-          }],
-        },
-      },
+      servers: [{
+        url: 'https://example.com/soap',
+      }],
     };
     const convertedResources = [{ _type: 'request', name: 'Converted request' }];
 
-    mockGetJsonForWSDL.mockResolvedValue(wsdls as never);
-    mockGetWSDLServices.mockReturnValue({
-      services: [{
-        service: 'Calculator',
-        filename: 'calculator.wsdl',
-      }],
-    } as never);
-    mockFindWSDLForServiceName.mockReturnValue({ filename: 'calculator.wsdl' } as never);
-    mockGetSwaggerForService.mockReturnValue(swagger as never);
-    mockPostmanConvert.mockReturnValue(convertedResources as never);
+    mockLooksLikeWsdl.mockReturnValue(true);
+    mockGenerateOpenApiFromWsdl.mockResolvedValue(openApiDocument as never);
+    mockConvertOpenApi.mockResolvedValue(convertedResources as never);
 
-    const result = await convert('<wsdl:definition />');
-    const [postmanJson] = mockPostmanConvert.mock.calls[0];
-    const parsedPostman = JSON.parse(postmanJson);
+    const result = await convert('<wsdl:definitions />');
 
-    expect(mockGetJsonForWSDL).toHaveBeenCalledWith('<?xml version="1.0" encoding="UTF-8" ?><wsdl:definition />');
-    expect(parsedPostman.info.schema).toBe('https://schema.getpostman.com/json/collection/v2.0.0/collection.json');
-    expect(parsedPostman.item[0].item[0].request.body.raw).toBe('<Envelope />');
+    expect(mockGenerateOpenApiFromWsdl).toHaveBeenCalledWith('<wsdl:definitions />');
+    expect(mockConvertOpenApi).toHaveBeenCalledWith(JSON.stringify(openApiDocument));
     expect(result).toEqual(convertedResources);
 
     consoleError.mockRestore();
@@ -107,9 +66,10 @@ describe('wsdl importer', () => {
   it('returns null when WSDL conversion fails', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    mockGetJsonForWSDL.mockRejectedValue(new Error('invalid wsdl'));
+    mockLooksLikeWsdl.mockReturnValue(true);
+    mockGenerateOpenApiFromWsdl.mockRejectedValue(new Error('invalid wsdl'));
 
-    await expect(convert('<wsdl:definition />')).resolves.toBeNull();
+    await expect(convert('<wsdl:definitions />')).resolves.toBeNull();
     expect(consoleError).toHaveBeenCalledWith(expect.any(Error));
   });
 });
