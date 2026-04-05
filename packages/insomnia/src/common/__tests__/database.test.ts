@@ -698,6 +698,56 @@ describe('docCreate()', () => {
   });
 });
 
+describe('findMostRecentlyModified()', () => {
+  beforeEach(globalBeforeEach);
+
+  it('returns an empty list when the underlying query errors', async () => {
+    await models.request.create({
+      _id: 'req_1',
+      parentId: 'wrk_1',
+    });
+
+    await expect(
+      db.findMostRecentlyModified(models.request.type, {
+        // @ts-expect-error verifying compatibility with invalid query operators
+        _id: { $wat: 'req_1' },
+      }),
+    ).resolves.toEqual([]);
+  });
+});
+
+describe('removeWhere()', () => {
+  beforeEach(globalBeforeEach);
+
+  it('removes matching docs and their descendants', async () => {
+    const workspace = await models.workspace.create({
+      _id: 'wrk_1',
+    });
+    const requestGroup = await models.requestGroup.create({
+      _id: 'fld_1',
+      parentId: workspace._id,
+    });
+    await models.request.create({
+      _id: 'req_1',
+      parentId: requestGroup._id,
+    });
+    await models.request.create({
+      _id: 'req_2',
+      parentId: workspace._id,
+    });
+
+    await db.removeWhere(models.requestGroup.type, {
+      _id: requestGroup._id,
+    });
+
+    expect(await db.get(models.requestGroup.type, requestGroup._id)).toBe(null);
+    expect(await db.get(models.request.type, 'req_1')).toBe(null);
+    expect(await db.get(models.request.type, 'req_2')).toEqual(
+      expect.objectContaining({ _id: 'req_2' }),
+    );
+  });
+});
+
 describe('withAncestors()', () => {
   beforeEach(globalBeforeEach);
 

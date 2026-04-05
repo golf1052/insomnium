@@ -1,8 +1,6 @@
 /* eslint-disable prefer-rest-params -- don't want to change ...arguments usage for these sensitive functions without more testing */
 import electron from 'electron';
-// to-do > "@seald-io/nedb": "^2.0.0",
-// import NeDB from '@seald-io/nedb';
-import NeDB from 'nedb';
+import NeDB from 'agentdb';
 import fsPath from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -211,7 +209,6 @@ export const database = {
         .sort({
           modified: -1,
         })
-        // @ts-expect-error -- TSCONVERSION limit shouldn't be applied if it's null, or default to something that means no-limit
         .limit(limit)
         .exec(async (err, rawDocs) => {
           if (err) {
@@ -541,8 +538,6 @@ export const database = {
       (db[doc.type] as NeDB<T>).update(
         { _id: docWithDefaults._id },
         docWithDefaults,
-        // TODO(TSCONVERSION) see comment below, upsert can happen automatically as part of the update
-        // @ts-expect-error -- TSCONVERSION expects 4 args but only sent 3. Need to validate what UpdateOptions should be.
         err => {
           if (err) {
             return reject(err);

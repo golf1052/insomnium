@@ -16,6 +16,7 @@ module.exports = {
   testEnvironment: 'jsdom',
   verbose: true,
   moduleNameMapper: {
+    '^agentdb$': path.join(__dirname, '../agentdb/src/index.ts'),
     '\\.(css|less|png|svg)$': '<rootDir>/src/__mocks__/dummy.ts',
     'styled-components': path.join(__dirname, '../../node_modules/styled-components'),
     'jsonpath-plus': path.join(__dirname, '../../node_modules/jsonpath-plus/dist/index-node-cjs.cjs'),
