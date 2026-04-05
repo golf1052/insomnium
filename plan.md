@@ -39,13 +39,17 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Updated `packages/insomnia-send-request` to `yaml@^2.8.3`.
   - Removed the legacy `yaml-source-map` dependency and replaced its spec-editor usage with native `yaml@2` AST traversal.
   - Added a Jest module mapping so app tests resolve `yaml` to the Node entry point instead of the browser bundle.
+- Completed `http-parser-and-sanitizer-updates`.
+  - Updated `axios` to `^1.14.0` in `packages/insomnia` and `packages/insomnia-send-request`.
+  - Updated `dompurify` to `^3.3.3`, `lodash` to `^4.18.1`, and `node-forge` to `^1.4.0` in `packages/insomnia`.
+  - Updated `node-forge` to `^1.4.0` in `packages/insomnia-send-request`.
 - `npm audit` after this wave:
-  - 100 total vulnerabilities
+  - 96 total vulnerabilities
   - 9 critical
-  - 61 high
-  - 17 moderate
+  - 58 high
+  - 16 moderate
   - 13 low
-- Next active backlog item: `http-parser-and-sanitizer-updates`.
+- Next active backlog item: `spectral-stack-major-upgrade`.
 
 ## Highest-priority findings
 
@@ -114,12 +118,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 1. `root-and-common-security-bumps` - done
     - Update root `@xmldom/xmldom` and other low-risk direct packages such as `js-yaml`, `postcss`, and `yaml`.
     - Refresh lockfile state and reduce the easy audit findings first.
-1. `http-parser-and-sanitizer-updates` - in progress
+1. `http-parser-and-sanitizer-updates` - done
     - Update `axios`, `dompurify`, `lodash`, `node-forge`, and adjacent direct app/send-request dependencies.
     - Verify request sending, auth flows, and HTML rendering paths.
-1. `spectral-stack-major-upgrade`
-   - Upgrade `@stoplight/spectral-core`, `@stoplight/spectral-formats`, `@stoplight/spectral-rulesets`, and `jsonpath-plus`.
-   - Validate ruleset loading, linting behavior, and bundling.
+1. `spectral-stack-major-upgrade` - in progress
+    - Upgrade `@stoplight/spectral-core`, `@stoplight/spectral-formats`, `@stoplight/spectral-rulesets`, and `jsonpath-plus`.
+    - Validate ruleset loading, linting behavior, and bundling.
 1. `httpsnippet-major-upgrade`
    - Move `httpsnippet` to a current safe major in both app packages.
    - Validate generated request snippets and any export/copy workflows that depend on it.
