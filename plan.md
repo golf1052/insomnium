@@ -88,6 +88,11 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Verified `svg-text-to-path` still has no fix available, even on its latest `2.1.0` release.
   - Investigated `apiconnect-wsdl@2.0.36`, but its `>=18.7.0 <21.0.0` engine range conflicts with `@electron/rebuild@4.0.3` requiring Node `>=22.12.0`, so there is no single engine window that satisfies both under the repo's `engine-strict=true` installs.
   - Updated the checked-in Node pins to match the current installable toolchain instead of the stale Node 18 values.
+- Reinvestigated `node-libcurl-compatibility` against the current `@getinsomnia/node-libcurl@3.2.1` line.
+  - `3.2.1` no longer hits the earlier `tar` / `minipass` startup crash and its package layout still matches the repo's current usage and test mocks.
+  - The package now requires Node `>=24.14.0`, which matches the repo's current `.nvmrc`, but Kong does not publish a Windows prebuilt binary for `electron-v25.2`, so installs fall back to a source build.
+  - The Windows source-build path got past the Python 3.12 `distutils` issue with a throwaway virtualenv, then failed in `curl-for-windows` because `nasm` is not present in this environment.
+  - This means the upgrade path is now blocked by Electron 25 being outside the upstream prebuilt-binary window and by missing Windows native-build prerequisites, not by the old `node-pre-gyp` crash.
 - `npm audit` after this wave:
   - 52 total vulnerabilities
   - 4 critical
@@ -139,6 +144,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 ### 5. Special investigation items
 
 - `@getinsomnia/node-libcurl` has a high-severity finding and is tightly coupled to Electron / Node ABI compatibility
+- `@getinsomnia/node-libcurl@3.2.1` is a plausible target now that the repo runs on Node 24, but the Electron 25 Windows install path still lacks an upstream prebuilt binary and currently requires additional native prerequisites such as `nasm`
 - `apiconnect-wsdl` does have a newer `2.0.36` line, but it is blocked by a Node engine conflict with the current builder stack
 - `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is not a usable forward fix
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
@@ -175,7 +181,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
     - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
 1. `node-libcurl-compatibility` - blocked
     - Upgrade `@getinsomnia/node-libcurl` alongside the chosen Electron/Node versions.
-    - Verify native build, development startup, and packaging behavior.
+    - `@getinsomnia/node-libcurl@3.2.1` no longer reproduces the old `tar` / `minipass` crash, but it has no `electron-v25.2` Windows prebuilt binary and the source-build fallback currently stops at missing `nasm`.
+    - Verify native build, development startup, and packaging behavior once Electron moves into the upstream prebuilt range or the Windows native build prerequisites are provisioned.
 1. `smoke-test-and-shared-tooling-security-upgrades` - done
     - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
     - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.
