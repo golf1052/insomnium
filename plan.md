@@ -49,13 +49,16 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Updated `jsonpath-plus` to `^10.4.0` in both app packages.
   - Validation passed, and the direct `jsonpath-plus` critical finding is gone.
   - Residual high-severity audit findings still remain on the latest spectral packages, so any further reduction now belongs in the transitive-override or manual-remediation waves rather than more direct version bumps.
+- Completed `httpsnippet-major-upgrade`.
+  - Updated `httpsnippet` to `^3.0.10` in `packages/insomnia` and `packages/insomnia-send-request`.
+  - Existing generate-code and copy-as-cURL integrations remained compatible without code changes.
 - `npm audit` after this wave:
-  - 96 total vulnerabilities
-  - 6 critical
+  - 95 total vulnerabilities
+  - 5 critical
   - 61 high
   - 16 moderate
   - 13 low
-- Next active backlog item: `httpsnippet-major-upgrade`.
+- Next active backlog item: `electron-toolchain-upgrade`.
 
 ## Highest-priority findings
 
@@ -130,12 +133,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 1. `spectral-stack-major-upgrade` - done
     - Upgrade `@stoplight/spectral-core`, `@stoplight/spectral-formats`, `@stoplight/spectral-rulesets`, and `jsonpath-plus`.
     - Validate ruleset loading, linting behavior, and bundling.
-1. `httpsnippet-major-upgrade` - in progress
+1. `httpsnippet-major-upgrade` - done
     - Move `httpsnippet` to a current safe major in both app packages.
     - Validate generated request snippets and any export/copy workflows that depend on it.
-1. `electron-toolchain-upgrade`
-   - Upgrade `electron`, `electron-builder`, Windows packaging helpers, and the surrounding Forge/build-tooling stack.
-   - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
+1. `electron-toolchain-upgrade` - in progress
+    - Upgrade `electron`, `electron-builder`, Windows packaging helpers, and the surrounding Forge/build-tooling stack.
+    - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
 1. `node-libcurl-compatibility`
    - Upgrade `@getinsomnia/node-libcurl` alongside the chosen Electron/Node versions.
    - Verify native build, development startup, and packaging behavior.
