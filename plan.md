@@ -20,10 +20,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - Root `package.json` adds 1 dependency and 29 devDependencies.
 - `packages/agentdb` and `packages/insomnia-testing` currently have no direct dependency surface of their own.
 - Runtime and toolchain pins are currently spread across:
-  - `.nvmrc` -> Node `18.18.2`
+  - `.nvmrc` -> Node `24.14.1`
   - `.npmrc` -> Electron runtime target `25.2.0`
-  - `shell.nix` -> `nodejs-18_x` and `electron_25`
+  - `shell.nix` -> `nodejs-24_x` and `electron_25`
+  - `package.json` -> Node `>=22.12.0`
 - The external `nedb` package no longer appears in workspace manifests or `package-lock.json`; the app now uses the in-repo `agentdb` workspace, while some fixture names still reflect the legacy NeDB file format for compatibility.
+- The current builder stack also pulls in `@electron/rebuild@4.0.3` through `electron-builder-squirrel-windows`, which requires Node `>=22.12.0`; the older Node 18 pins were therefore stale relative to the checked-in dependency graph.
 - `npm audit` baseline at plan time:
   - 102 total vulnerabilities
   - 9 critical
@@ -80,15 +82,24 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Re-ran the audit and confirmed the direct `esbuild` finding is gone; the remaining `esbuild` advisory now only comes from Vite 4's nested `esbuild@0.18.20`.
   - Reevaluated the stale workspace-only `protobufjs` override in `packages/insomnia` and removed it because root installs already resolve `protobufjs@7.5.4`.
   - Cleaned stale NeDB architecture wording so docs and comments reflect the current `agentdb` compatibility layer.
+- Completed `manual-review-no-fix-remediation`.
+  - Verified `jshint` is already on its latest `2.13.6` release, while npm audit still suggests an unusable downgrade to `0.5.9`.
+  - Verified `mocha` is not fixable through a normal forward upgrade in the current audit data; the advisory range still includes the latest `11.7.5` line.
+  - Verified `svg-text-to-path` still has no fix available, even on its latest `2.1.0` release.
+  - Investigated `apiconnect-wsdl@2.0.36`, but its `>=18.7.0 <21.0.0` engine range conflicts with `@electron/rebuild@4.0.3` requiring Node `>=22.12.0`, so there is no single engine window that satisfies both under the repo's `engine-strict=true` installs.
+  - Updated the checked-in Node pins to match the current installable toolchain instead of the stale Node 18 values.
 - `npm audit` after this wave:
   - 52 total vulnerabilities
   - 4 critical
   - 28 high
   - 12 moderate
   - 8 low
-- Manual-review findings so far:
-  - `mocha` still reports a direct high via `serialize-javascript`, but the current npm audit suggestion is a downgrade to `7.2.0`, so it should be treated as a manual-review item rather than a straightforward forward upgrade.
-- Next active backlog item: `manual-review-no-fix-remediation`.
+- Manual-review findings:
+  - `mocha` still reports a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path.
+  - `jshint` is already on its latest release, and the current audit recommendation is an unusable downgrade to `0.5.9`.
+  - `svg-text-to-path` still has no fix available, even on its latest release.
+  - `apiconnect-wsdl` does have a newer `2.0.36` line, but it conflicts with the Node `>=22.12.0` requirement introduced by the current builder stack.
+- Remaining active backlog items: `electron-toolchain-upgrade` and `node-libcurl-compatibility`.
 
 ## Highest-priority findings
 
@@ -103,20 +114,20 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 - App/tooling still showing direct high findings: `jshint`
 - Platform-coupled direct highs: `electron`, `@getinsomnia/node-libcurl`
-- `mocha` still shows a direct high via `serialize-javascript`, but npm audit currently points to an older `7.2.0` release instead of a viable forward upgrade
+- `mocha` still shows a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path
 - The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, and `grpc-reflection-js` findings have been cleared.
-- `packages/insomnia/package.json` also pins `protobufjs` in `overrides`, which should be reevaluated after direct dependency upgrades
 
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
 
 - `vite` remains as a moderate direct finding after the safe `4.x` upgrade, and it still carries the residual `esbuild` advisory through its nested `esbuild@0.18.20`; the next audit fix path requires a major jump
-- `apiconnect-wsdl` still needs manual review because the audit fix suggestion is not obviously safe
+- `apiconnect-wsdl` remains a moderate direct finding, but its newer line is currently blocked by an install-time Node engine conflict with the builder stack
 - The previously moderate `@grpc/grpc-js`, `graphql`, `js-yaml`, `postcss`, and `yaml` findings have been cleared.
 
 ### 4. High-risk platform/toolchain area
 
 - `electron` is pinned at `25.8.1` in `packages/insomnia/package.json`
 - Audit recommends a much newer major Electron line
+- The current builder stack already requires Node `>=22.12.0` via `@electron/rebuild@4.0.3`, so the repo's Node pins were updated to match the actual installable toolchain
 - Electron upgrade work is coupled to:
   - `.npmrc`
   - `.nvmrc`
@@ -128,8 +139,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 ### 5. Special investigation items
 
 - `@getinsomnia/node-libcurl` has a high-severity finding and is tightly coupled to Electron / Node ABI compatibility
-- `apiconnect-wsdl` appears to pull vulnerable XML-related dependencies; the audit fix suggestion is not obviously safe and needs manual review
-- `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is a downgrade to `7.2.0` rather than a usable forward fix
+- `apiconnect-wsdl` does have a newer `2.0.36` line, but it is blocked by a Node engine conflict with the current builder stack
+- `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is not a usable forward fix
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
 - Historical NeDB follow-up is now down to legacy fixture naming and compatibility language, not a current direct-package audit item
 
@@ -168,9 +179,9 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 1. `smoke-test-and-shared-tooling-security-upgrades` - done
     - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
     - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.
-1. `manual-review-no-fix-remediation` - in progress
-    - Investigate `apiconnect-wsdl`, `jshint`, `mocha`, `svg-text-to-path`, and other audit items without a clean automatic path.
-    - The stale NeDB documentation cleanup is complete; remaining work is package-level manual review.
+1. `manual-review-no-fix-remediation` - done
+    - Investigated `apiconnect-wsdl`, `jshint`, `mocha`, `svg-text-to-path`, and the historical NeDB cleanup.
+    - Remaining no-fix/manual-review items are now documented results rather than active upgrade work.
 1. `transitive-overrides-and-reaudit` - done
    - Revisited the historical `protobufjs` override and removed it because it no longer affected the resolved dependency tree.
    - Updated direct `esbuild` pins and re-audited; the remaining `esbuild` finding is now only Vite's nested copy and does not have a safe non-major fix in the current toolchain.
