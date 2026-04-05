@@ -43,13 +43,19 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Updated `axios` to `^1.14.0` in `packages/insomnia` and `packages/insomnia-send-request`.
   - Updated `dompurify` to `^3.3.3`, `lodash` to `^4.18.1`, and `node-forge` to `^1.4.0` in `packages/insomnia`.
   - Updated `node-forge` to `^1.4.0` in `packages/insomnia-send-request`.
+- Completed `spectral-stack-major-upgrade`.
+  - Updated `@stoplight/spectral-core` to `^1.21.0`, `@stoplight/spectral-formats` to `^1.8.2`, `@stoplight/spectral-rulesets` to `^1.22.0`, and `@stoplight/spectral-ruleset-bundler` to `^1.6.3` in `packages/insomnia`.
+  - Updated `@stoplight/spectral-core`, `@stoplight/spectral-formats`, and `@stoplight/spectral-rulesets` to the same versions in `packages/insomnia-send-request`.
+  - Updated `jsonpath-plus` to `^10.4.0` in both app packages.
+  - Validation passed, and the direct `jsonpath-plus` critical finding is gone.
+  - Residual high-severity audit findings still remain on the latest spectral packages, so any further reduction now belongs in the transitive-override or manual-remediation waves rather than more direct version bumps.
 - `npm audit` after this wave:
   - 96 total vulnerabilities
-  - 9 critical
-  - 58 high
+  - 6 critical
+  - 61 high
   - 16 moderate
   - 13 low
-- Next active backlog item: `spectral-stack-major-upgrade`.
+- Next active backlog item: `httpsnippet-major-upgrade`.
 
 ## Highest-priority findings
 
@@ -121,12 +127,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 1. `http-parser-and-sanitizer-updates` - done
     - Update `axios`, `dompurify`, `lodash`, `node-forge`, and adjacent direct app/send-request dependencies.
     - Verify request sending, auth flows, and HTML rendering paths.
-1. `spectral-stack-major-upgrade` - in progress
+1. `spectral-stack-major-upgrade` - done
     - Upgrade `@stoplight/spectral-core`, `@stoplight/spectral-formats`, `@stoplight/spectral-rulesets`, and `jsonpath-plus`.
     - Validate ruleset loading, linting behavior, and bundling.
-1. `httpsnippet-major-upgrade`
-   - Move `httpsnippet` to a current safe major in both app packages.
-   - Validate generated request snippets and any export/copy workflows that depend on it.
+1. `httpsnippet-major-upgrade` - in progress
+    - Move `httpsnippet` to a current safe major in both app packages.
+    - Validate generated request snippets and any export/copy workflows that depend on it.
 1. `electron-toolchain-upgrade`
    - Upgrade `electron`, `electron-builder`, Windows packaging helpers, and the surrounding Forge/build-tooling stack.
    - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
