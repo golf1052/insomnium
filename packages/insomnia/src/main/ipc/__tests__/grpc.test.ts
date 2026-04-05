@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import * as grpcReflection from 'grpc-reflection-js';
 import protobuf from 'protobufjs';
 
 import { globalBeforeEach } from '../../../__jest__/before-each';
 import { loadMethodsFromReflection } from '../grpc';
+import { GrpcReflectionClient } from '../grpc-reflection-client';
 
-jest.mock('grpc-reflection-js');
+jest.mock('../grpc-reflection-client', () => ({
+  GrpcReflectionClient: jest.fn(),
+}));
 
 describe('loadMethodsFromReflection', () => {
   beforeEach(globalBeforeEach);
@@ -14,7 +16,8 @@ describe('loadMethodsFromReflection', () => {
     beforeEach(() => {
       globalBeforeEach();
       // we want to test that the values that are passed to axios are returned in the config key
-      (grpcReflection.Client as unknown as jest.Mock).mockImplementation(() => ({
+      (GrpcReflectionClient as unknown as jest.Mock).mockImplementation(() => ({
+        close: jest.fn(),
         listServices: () => Promise.resolve(['FooService']),
         fileContainingSymbol: async () => {
           const parsed = protobuf.parse(`
@@ -52,7 +55,8 @@ describe('loadMethodsFromReflection', () => {
     beforeEach(() => {
       globalBeforeEach();
       // we want to test that the values that are passed to axios are returned in the config key
-      (grpcReflection.Client as unknown as jest.Mock).mockImplementation(() => ({
+      (GrpcReflectionClient as unknown as jest.Mock).mockImplementation(() => ({
+        close: jest.fn(),
         listServices: () => Promise.resolve(['FooService']),
         fileContainingSymbol: async () => {
           const parsed = protobuf.parse(`
@@ -90,7 +94,8 @@ describe('loadMethodsFromReflection', () => {
     beforeEach(() => {
       globalBeforeEach();
       // we want to test that the values that are passed to axios are returned in the config key
-      (grpcReflection.Client as unknown as jest.Mock).mockImplementation(() => ({
+      (GrpcReflectionClient as unknown as jest.Mock).mockImplementation(() => ({
+        close: jest.fn(),
         listServices: () => Promise.resolve(['FooService', 'BarService']),
         fileContainingSymbol: async () => {
           const parsed = protobuf.parse(`

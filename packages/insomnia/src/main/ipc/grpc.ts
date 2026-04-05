@@ -2,7 +2,6 @@ import { Call, ClientDuplexStream, ClientReadableStream, credentials, makeGeneri
 import * as protoLoader from '@grpc/proto-loader';
 import { AnyDefinition, EnumTypeDefinition, MessageTypeDefinition, PackageDefinition, ServiceDefinition } from '@grpc/proto-loader';
 import electron, { ipcMain, IpcMainEvent } from 'electron';
-import * as grpcReflection from 'grpc-reflection-js';
 
 import type { RenderedGrpcRequest, RenderedGrpcRequestBody } from '../../common/render';
 import * as models from '../../models';
@@ -11,6 +10,7 @@ import { parseGrpcUrl } from '../../network/grpc/parse-grpc-url';
 import { writeProtoFile } from '../../network/grpc/write-proto-file';
 import { guard } from '../../utils/guard';
 import { mockRequestMethods } from './automock';
+import { GrpcReflectionClient } from './grpc-reflection-client';
 
 const grpcCalls = new Map<string, Call>();
 export interface GrpcIpcRequestParams {
@@ -78,43 +78,47 @@ interface MethodDefs {
 const getMethodsFromReflection = async (host: string, metadata: GrpcRequestHeader[]): Promise<MethodDefs[]> => {
   try {
     const { url, enableTls } = parseGrpcUrl(host);
-    const client = new grpcReflection.Client(url,
+    const client = new GrpcReflectionClient(
+      url,
       enableTls ? credentials.createSsl() : credentials.createInsecure(),
-      grpcOptions,
-      filterDisabledMetaData(metadata)
+      filterDisabledMetaData(metadata),
     );
-    const services = await client.listServices();
-    const methodsPromises = services.map(async service => {
-      const fileContainingSymbol = await client.fileContainingSymbol(service);
-      const fullService = fileContainingSymbol.lookupService(service);
-      const mockedRequestMethods = mockRequestMethods(fullService);
-      const descriptorMessage = fileContainingSymbol.toDescriptor('proto3');
-      const packageDefinition = protoLoader.loadFileDescriptorSetFromObject(descriptorMessage, {});
-      const tryToGetMethods = () => {
-        try {
-          console.log('[grpc] loading service from reflection:', service);
-          const serviceDefinition = asServiceDefinition(packageDefinition[service]);
-          guard(serviceDefinition, `'${service}' was not a valid ServiceDefinition`);
-          const serviceMethods = Object.values(serviceDefinition);
-          return serviceMethods.map(m => {
-            const methodName = Object.keys(mockedRequestMethods).find(name => m.path.endsWith(`/${name}`));
-            if (!methodName) {
-              return m;
-            }
-            return {
-              ...m,
-              example: mockedRequestMethods[methodName]().plain,
-            };
-          });
-        } catch (e) {
-          console.error(e);
-          return [];
-        }
-      };
-      const methods = tryToGetMethods();
-      return methods;
-    });
-    return (await Promise.all(methodsPromises)).flat();
+    try {
+      const services = await client.listServices();
+      const methodsPromises = services.map(async service => {
+        const fileContainingSymbol = await client.fileContainingSymbol(service);
+        const fullService = fileContainingSymbol.lookupService(service);
+        const mockedRequestMethods = mockRequestMethods(fullService);
+        const descriptorMessage = fileContainingSymbol.toDescriptor('proto3');
+        const packageDefinition = protoLoader.loadFileDescriptorSetFromObject(descriptorMessage, {});
+        const tryToGetMethods = () => {
+          try {
+            console.log('[grpc] loading service from reflection:', service);
+            const serviceDefinition = asServiceDefinition(packageDefinition[service]);
+            guard(serviceDefinition, `'${service}' was not a valid ServiceDefinition`);
+            const serviceMethods = Object.values(serviceDefinition);
+            return serviceMethods.map(m => {
+              const methodName = Object.keys(mockedRequestMethods).find(name => m.path.endsWith(`/${name}`));
+              if (!methodName) {
+                return m;
+              }
+              return {
+                ...m,
+                example: mockedRequestMethods[methodName]().plain,
+              };
+            });
+          } catch (e) {
+            console.error(e);
+            return [];
+          }
+        };
+        const methods = tryToGetMethods();
+        return methods;
+      });
+      return (await Promise.all(methodsPromises)).flat();
+    } finally {
+      client.close();
+    }
   } catch (error) {
     throw error;
   }
