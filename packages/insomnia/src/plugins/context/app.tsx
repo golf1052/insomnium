@@ -1,5 +1,5 @@
 import React from 'react';
-import type ReactDOM from 'react-dom';
+import * as ReactDOM from 'react-dom';
 
 import { getAppPlatform, getAppVersion } from '../../common/constants';
 import type { RenderPurpose } from '../../common/render';
@@ -217,9 +217,6 @@ export function init(renderPurpose: RenderPurpose = RENDER_PURPOSE_GENERAL): {
         if (typeof globalThis.document === 'undefined') {
           return {};
         }
-
-        const ReactDOM = await import('react-dom');
-        const React = await import('react');
 
         return {
           ReactDOM,

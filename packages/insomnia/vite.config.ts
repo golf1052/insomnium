@@ -1,3 +1,4 @@
+import babel from '@rolldown/plugin-babel';
 import react from '@vitejs/plugin-react';
 import { builtinModules } from 'module';
 import path from 'path';
@@ -18,6 +19,7 @@ export default defineConfig(({ mode }) => {
     base: __DEV__ ? '/' : './',
     define: {
       __DEV__: JSON.stringify(__DEV__),
+      'process.type': JSON.stringify('renderer'),
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.INSOMNIA_ENV': JSON.stringify(mode),
     },
@@ -32,7 +34,13 @@ export default defineConfig(({ mode }) => {
       outDir: path.join(__dirname, 'build'),
       assetsDir: './',
       brotliSize: false,
+      chunkSizeWarningLimit: 2048,
       emptyOutDir: false,
+      rolldownOptions: {
+        checks: {
+          pluginTimings: false,
+        },
+      },
       rollupOptions: {
         external: ['@getinsomnia/node-libcurl'],
       },
@@ -52,14 +60,14 @@ export default defineConfig(({ mode }) => {
           ...builtinModules.map(m => `node:${m}`),
         ],
       }),
+      babel({
+        include: /[\\/]src[\\/].*\.[jt]sx?$/,
+        plugins: [
+          ['@babel/plugin-proposal-class-properties', { loose: true }],
+        ],
+      }),
       react({
         jsxRuntime: 'automatic',
-        babel: {
-          plugins: [
-            // We need to have these plugins installed in our dependencies
-            ['@babel/plugin-proposal-class-properties', { loose: true }],
-          ],
-        },
       }),
     ],
   };

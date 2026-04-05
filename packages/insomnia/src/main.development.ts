@@ -21,8 +21,6 @@ import * as windowUtils from './main/window-utils';
 import * as models from './models/index';
 import type { Stats } from './models/stats';
 import type { ToastNotification } from './ui/components/toast';
-import { dummyStartingWorkspace, importToWorkspaceFromJSON } from './common/import';
-import { Workspace } from './models/workspace';
 
 // Handle potential auto-update
 if (checkIfRestartNeeded()) {
@@ -95,13 +93,10 @@ app.on('ready', async () => {
   // Init some important things first
   await database.init(models.types());
   await _createModelInstances();
-  const workspaces = await database.find<Workspace>(models.workspace.type);
-  console.log("workspaces desu", workspaces);
 
   windowUtils.init();
   await _launchApp();
-
-  // NOTE: could also try to initialize workspace here (?)
+  void backupIfNewerVersionAvailable();
 
 });
 

@@ -21,12 +21,20 @@ const pathLookup: Record<string, string> = {
   darwin: path.join('mac-universal', 'Insomnium.app', 'Contents', 'MacOS', 'Insomnium'),
   linux: path.join('linux-unpacked', 'insomnia'),
 };
+const electronPathLookup: Record<string, string> = {
+  win32: path.join('electron', 'dist', 'electron.exe'),
+  darwin: path.join('electron', 'dist', 'Electron.app', 'Contents', 'MacOS', 'Electron'),
+  linux: path.join('electron', 'dist', 'electron'),
+};
 export const cwd = path.resolve(__dirname, '..', '..', 'insomnia');
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 const insomniaBinary = path.join(cwd, 'dist', pathLookup[process.platform]);
-const electronBinary = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron');
+const electronBinary = path.join(repoRoot, 'node_modules', electronPathLookup[process.platform]);
+const electronBinaryFallback = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron');
 
-export const executablePath = bundleType() === 'package' ? insomniaBinary : electronBinary;
+export const executablePath = bundleType() === 'package'
+  ? insomniaBinary
+  : (fs.existsSync(electronBinary) ? electronBinary : electronBinaryFallback);
 
 // NOTE: main.min.js is built by app-build in /build and also by the watcher in /src
 export const mainPath = path.join(bundleType() === 'dev' ? 'src' : 'build', 'main.min.js');

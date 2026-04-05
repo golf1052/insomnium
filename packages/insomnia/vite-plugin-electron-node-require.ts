@@ -6,6 +6,21 @@ export interface Options {
   modules: string[];
 }
 
+const VIRTUAL_EXTERNAL_PREFIX = 'virtual:external:';
+const RESOLVED_VIRTUAL_EXTERNAL_PREFIX = `\0${VIRTUAL_EXTERNAL_PREFIX}`;
+
+const getExternalId = (id: string) => {
+  if (id.startsWith(RESOLVED_VIRTUAL_EXTERNAL_PREFIX)) {
+    return id.slice(RESOLVED_VIRTUAL_EXTERNAL_PREFIX.length);
+  }
+
+  if (id.startsWith(VIRTUAL_EXTERNAL_PREFIX)) {
+    return id.slice(VIRTUAL_EXTERNAL_PREFIX.length);
+  }
+
+  return null;
+};
+
 /**
  * Allows Vite to import modules that will be resolved by Node's require() function.
  */
@@ -13,9 +28,11 @@ export function electronNodeRequire(options: Options): Plugin {
   const {
     modules = [],
   } = options;
+  const moduleSet = new Set(modules);
 
   return {
     name: 'vite-plugin-electron-node-require',
+    enforce: 'pre',
     config(conf) {
       // Exclude the modules from Vite's dependency optimization (pre-bundling)
       conf.optimizeDeps = {
@@ -24,13 +41,6 @@ export function electronNodeRequire(options: Options): Plugin {
           ...conf.optimizeDeps?.exclude ? conf.optimizeDeps.exclude : [],
           ...modules,
         ],
-      };
-
-      // Create aliases for the modules so that we can resolve them with this plugin
-      conf.resolve ??= {};
-      conf.resolve.alias = {
-        ...conf.resolve.alias,
-        ...Object.fromEntries(modules.map(e => [e, `virtual:external:${e}`])),
       };
 
       // Ignore the modules from Rollup's commonjs plugin so that we can resolve them with this plugin
@@ -44,24 +54,23 @@ export function electronNodeRequire(options: Options): Plugin {
       return conf;
     },
     resolveId(id) {
-      const externalId = id.split('virtual:external:')[1];
-      if (modules.includes(externalId)) {
-        // Return a virtual module ID so that Vite knows to use this plugin to resolve the module
-        // The \0 is a special convention by Rollup to indicate that the module is virtual and should not be resolved by other plugins
-        return `\0${id}`;
+      const externalId = getExternalId(id) ?? id;
+      if (moduleSet.has(externalId)) {
+        // The \0 prefix marks the module as virtual so other plugins skip normal resolution.
+        return `${RESOLVED_VIRTUAL_EXTERNAL_PREFIX}${externalId}`;
       }
 
       // Return null to indicate that this plugin should not resolve the module
       return null;
     },
     load(id) {
-      if (id.includes('virtual:external:')) {
-        const externalId = id.split('virtual:external:')[1];
+      const externalId = getExternalId(id);
+      if (externalId && moduleSet.has(externalId)) {
 
         // We need to handle electron because it's different when required in the renderer process
         if (externalId === 'electron') {
           return `
-            const electron = require('electron');
+            const electron = globalThis.require('electron');
             export { electron as default };
             export const clipboard = electron.clipboard;
             export const contextBridge = electron.contextBridge;
@@ -88,7 +97,7 @@ export function electronNodeRequire(options: Options): Plugin {
         });
 
         return [
-          `const requiredModule = require('${externalId}');`,
+          `const requiredModule = globalThis.require('${externalId}');`,
           `${validExports.map(e => `export const ${e} = requiredModule.${e};`).join('\n')}`,
           `${exports.includes('default') ? 'export default requiredModule.default;' : 'export default requiredModule'}`,
         ].join('\n');

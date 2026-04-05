@@ -27,7 +27,7 @@ import { guard } from '../utils/guard';
 import { AppLoadingIndicator } from './components/app-loading-indicator';
 import { ErrorRoute } from './routes/error';
 import { shouldOrganizationsRevalidate } from './routes/organization';
-import Root from './routes/root';
+import Root, { loader as rootLoader } from './routes/root';
 
 const Project = lazy(() => import('./routes/project'));
 const Workspace = lazy(() => import('./routes/workspace'));
@@ -57,8 +57,7 @@ export const setupRouterStuff = (beginningPath: string | null = null) => {
       {
         path: '/',
         id: 'root',
-        loader: async (...args) =>
-          (await import('./routes/root')).loader(...args),
+        loader: rootLoader,
         element: <Root />,
         errorElement: <ErrorRoute />,
         children: [

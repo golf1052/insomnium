@@ -42,11 +42,11 @@ export async function backup() {
       return;
     }
     const files = await readdir(dataPath);
-    files.forEach(async (file: string) => {
-      if (file.endsWith('.db')) {
-        await copyFile(path.join(dataPath, file), path.join(versionPath, file));
-      }
-    });
+    await Promise.all(
+      files
+        .filter(file => file.endsWith('.db'))
+        .map(file => copyFile(path.join(dataPath, file), path.join(versionPath, file)))
+    );
     console.log('Exported backup to:', versionPath);
   } catch (err) {
     console.log('Error exporting backup:', err);
@@ -62,11 +62,11 @@ export async function restoreBackup(version: string) {
       console.log('No backup found at:', versionPath);
       return;
     }
-    files.forEach(async (file: string) => {
-      if (file.endsWith('.db')) {
-        await copyFile(path.join(versionPath, file), path.join(dataPath, file));
-      }
-    });
+    await Promise.all(
+      files
+        .filter(file => file.endsWith('.db'))
+        .map(file => copyFile(path.join(versionPath, file), path.join(dataPath, file)))
+    );
     console.log('Restored backup from:', versionPath);
   } catch (err) {
     console.log('Error restoring backup:', err);

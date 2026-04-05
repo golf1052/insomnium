@@ -112,6 +112,40 @@ describe('generate-code-modal helpers', () => {
     expect(state?.cmd).toBe('node:native');
   });
 
+  it('supports CommonJS httpsnippet module namespaces', async () => {
+    const exportHarRequestFn = jest.fn().mockResolvedValue({ log: { entries: [] } });
+    class HTTPSnippetMock {
+      static availableTargets() {
+        return [shellTarget];
+      }
+
+      convert(target: string, client: string) {
+        return `${target}:${client}`;
+      }
+    }
+
+    const state = await generateCodeSnippet(
+      createRequest(),
+      'env_1',
+      undefined,
+      undefined,
+      {
+        exportHarRequestFn,
+        loadHTTPSnippet: async () => ({
+          default: {
+            availableTargets: () => [shellTarget],
+            HTTPSnippet: HTTPSnippetMock,
+          },
+          availableTargets: () => [shellTarget],
+          HTTPSnippet: HTTPSnippetMock,
+        }),
+      },
+    );
+
+    expect(exportHarRequestFn).toHaveBeenCalledWith('req_1', 'env_1', false);
+    expect(state?.cmd).toBe('shell:curl');
+  });
+
   it('returns null when HAR generation fails', async () => {
     const state = await generateCodeSnippet(
       createRequest(),

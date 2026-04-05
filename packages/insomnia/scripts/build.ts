@@ -15,6 +15,8 @@ const minimumBuildNodeVersion = {
   patch: 0,
 };
 
+const minimumBuildNodeVersionText = `${minimumBuildNodeVersion.major}.${minimumBuildNodeVersion.minor}.${minimumBuildNodeVersion.patch}`;
+
 const isSupportedBuildNodeVersion = (version: string) => {
   const [major = 0, minor = 0, patch = 0] = version
     .replace(/^v/, '')
@@ -131,7 +133,7 @@ export const start = async () => {
   console.log(`[build] node: ${process.version}`);
 
   if (!isSupportedBuildNodeVersion(process.version)) {
-    console.log('[build] Node >=18.18.2 is required to build');
+    console.log(`[build] Node >=${minimumBuildNodeVersionText} is required to build`);
     process.exit(1);
   }
 

@@ -24,20 +24,16 @@ import { type DropdownProps } from '../base/dropdown';
 import { Icon } from '../icon';
 import { showError, showModal, showPrompt } from '../modals';
 import { AlertModal } from '../modals/alert-modal';
-import { GenerateCodeModal } from '../modals/generate-code-modal';
+import {
+  GenerateCodeModal,
+  resolveHTTPSnippetConstructor,
+  type HTTPSnippetModule,
+} from '../modals/generate-code-modal';
 import { RequestSettingsModal } from '../modals/request-settings-modal';
-
-interface HTTPSnippetInstance {
-  convert: (target: string, client: string) => string | null | undefined;
-}
-
-interface HTTPSnippetConstructor {
-  new (har: unknown): HTTPSnippetInstance;
-}
 
 interface CopyRequestAsCurlDependencies {
   exportHarRequestFn?: typeof exportHarRequest;
-  loadHTTPSnippet?: () => Promise<{ default: HTTPSnippetConstructor }>;
+  loadHTTPSnippet?: () => Promise<HTTPSnippetModule>;
   writeText?: (text: string) => void | Promise<void>;
 }
 
@@ -54,8 +50,8 @@ export const copyRequestAsCurl = async (
   environmentId: string,
   deps: CopyRequestAsCurlDependencies = {},
 ) => {
-  const loadHTTPSnippet = deps.loadHTTPSnippet || (() => import('httpsnippet') as Promise<{ default: HTTPSnippetConstructor }>);
-  const HTTPSnippet = (await loadHTTPSnippet()).default;
+  const loadHTTPSnippet = deps.loadHTTPSnippet || (() => import('httpsnippet') as Promise<HTTPSnippetModule>);
+  const HTTPSnippet = resolveHTTPSnippetConstructor(await loadHTTPSnippet());
   const har = await (deps.exportHarRequestFn || exportHarRequest)(requestId, environmentId);
   const snippet = har ? new HTTPSnippet(har) : null;
   const cmd = snippet?.convert('shell', 'curl');

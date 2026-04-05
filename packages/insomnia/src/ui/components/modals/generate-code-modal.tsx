@@ -55,9 +55,58 @@ interface HTTPSnippetConstructor {
   availableTargets: () => HTTPSnippetTarget[];
 }
 
+export interface HTTPSnippetModule {
+  default?: HTTPSnippetConstructor | {
+    HTTPSnippet?: HTTPSnippetConstructor;
+    availableTargets?: () => HTTPSnippetTarget[];
+  };
+  HTTPSnippet?: HTTPSnippetConstructor;
+  availableTargets?: () => HTTPSnippetTarget[];
+}
+
+const isHTTPSnippetConstructor = (value: unknown): value is HTTPSnippetConstructor => typeof value === 'function';
+const isAvailableTargets = (value: unknown): value is (() => HTTPSnippetTarget[]) => typeof value === 'function';
+
+export const resolveHTTPSnippetConstructor = (httpsSnippetModule: HTTPSnippetModule) => {
+  if (isHTTPSnippetConstructor(httpsSnippetModule.default)) {
+    return httpsSnippetModule.default;
+  }
+
+  if (isHTTPSnippetConstructor(httpsSnippetModule.HTTPSnippet)) {
+    return httpsSnippetModule.HTTPSnippet;
+  }
+
+  const nestedDefault = httpsSnippetModule.default;
+  if (nestedDefault && typeof nestedDefault === 'object' && isHTTPSnippetConstructor(nestedDefault.HTTPSnippet)) {
+    return nestedDefault.HTTPSnippet;
+  }
+
+  throw new Error('Failed to load the httpsnippet constructor');
+};
+
+export const resolveHTTPSnippetAvailableTargets = (
+  httpsSnippetModule: HTTPSnippetModule,
+  HTTPSnippet: HTTPSnippetConstructor,
+) => {
+  if (isAvailableTargets(httpsSnippetModule.availableTargets)) {
+    return httpsSnippetModule.availableTargets;
+  }
+
+  if (isAvailableTargets(HTTPSnippet.availableTargets)) {
+    return HTTPSnippet.availableTargets.bind(HTTPSnippet);
+  }
+
+  const nestedDefault = httpsSnippetModule.default;
+  if (nestedDefault && typeof nestedDefault === 'object' && isAvailableTargets(nestedDefault.availableTargets)) {
+    return nestedDefault.availableTargets;
+  }
+
+  throw new Error('Failed to load httpsnippet availableTargets');
+};
+
 interface GenerateCodeDependencies {
   exportHarRequestFn?: typeof exportHarRequest;
-  loadHTTPSnippet?: () => Promise<{ default: HTTPSnippetConstructor }>;
+  loadHTTPSnippet?: () => Promise<HTTPSnippetModule>;
 }
 
 export function parseStoredGenerateCodeOption<T>(storedValue: string | null, fallback: T): T {
@@ -91,9 +140,11 @@ export const generateCodeSnippet = async (
   client?: HTTPSnippetClient,
   deps: GenerateCodeDependencies = {},
 ): Promise<State | null> => {
-  const loadHTTPSnippet = deps.loadHTTPSnippet || (() => import('httpsnippet') as Promise<{ default: HTTPSnippetConstructor }>);
-  const HTTPSnippet = (await loadHTTPSnippet()).default;
-  const targets = HTTPSnippet.availableTargets();
+  const loadHTTPSnippet = deps.loadHTTPSnippet || (() => import('httpsnippet') as Promise<HTTPSnippetModule>);
+  const httpsSnippetModule = await loadHTTPSnippet();
+  const HTTPSnippet = resolveHTTPSnippetConstructor(httpsSnippetModule);
+  const availableTargets = resolveHTTPSnippetAvailableTargets(httpsSnippetModule, HTTPSnippet);
+  const targets = availableTargets();
   const selection = resolveGenerateCodeSelection(targets, target, client);
   const har = await (deps.exportHarRequestFn || exportHarRequest)(
     request._id,
