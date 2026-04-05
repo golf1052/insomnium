@@ -14,10 +14,10 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `packages/insomnia-smoke-test/package.json`
   - `packages/insomnia-testing/package.json`
   - `packages/insomnia/send-request/electron/package.json` is only a tiny shim.
-- Most of the dependency surface lives in `packages/insomnia` (57 dependencies, 93 devDependencies).
+- Most of the dependency surface lives in `packages/insomnia` (56 dependencies, 95 devDependencies).
 - `packages/insomnia-send-request` adds 27 dependencies.
 - `packages/insomnia-smoke-test` adds 4 dependencies and 25 devDependencies.
-- Root `package.json` adds 1 dependency and 29 devDependencies.
+- Root `package.json` adds 1 dependency and 28 devDependencies.
 - `packages/agentdb` and `packages/insomnia-testing` currently have no direct dependency surface of their own.
 - Runtime and toolchain pins are currently spread across:
   - `.nvmrc` -> Node `24.14.1`
@@ -26,12 +26,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `shell.nix` -> `nodejs-24_x` and `electron_41`
 - The external `nedb` package no longer appears in workspace manifests or `package-lock.json`; the app now uses the in-repo `agentdb` workspace, while some fixture names still reflect the legacy NeDB file format for compatibility.
 - The current builder stack also pulls in `@electron/rebuild@4.0.3` through `electron-builder-squirrel-windows`, which requires Node `>=22.12.0`; the older Node 18 pins were therefore stale relative to the checked-in dependency graph.
-- `npm audit` baseline at plan time:
-  - 102 total vulnerabilities
-  - 9 critical
-  - 62 high
-  - 18 moderate
-  - 13 low
+- Current `npm audit` snapshot:
+  - 17 total vulnerabilities
+  - 0 critical
+  - 12 high
+  - 0 moderate
+  - 5 low
 
 ## Progress updates
 
@@ -70,7 +70,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Validated packaging with `BUILD_TARGETS=portable npm run app-package`.
   - That earlier subset stopped at the Electron major bump and the `@getinsomnia/node-libcurl` compatibility work, which were later completed in the combined upgrade wave below.
 - Completed the safe app/tooling direct-upgrade subset.
-  - Updated `react-router-dom` to `^6.30.3` and `vite` to `^4.5.14` in `packages/insomnia`.
+  - Updated `react-router-dom` to `^6.30.3` in `packages/insomnia`.
+  - The renderer toolchain is now on `vite@^8.0.3` in `packages/insomnia`.
   - Updated root `svgo` to `^2.8.2`.
   - Adjusted route error handling to match the newer `react-router-dom` `ErrorResponse` typing.
 - Completed the `grpc-reflection-js` manual-remediation slice.
@@ -78,8 +79,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Added a local reflection client that uses the official v1alpha reflection proto and preserves the existing service/method loading flow.
   - Updated the gRPC IPC tests to mock the new client seam instead of the removed package.
 - Completed `transitive-overrides-and-reaudit`.
-  - Updated root and app direct `esbuild` dependencies to `^0.28.0`.
-  - Re-ran the audit and confirmed the direct `esbuild` finding is gone; the remaining `esbuild` advisory now only comes from Vite 4's nested `esbuild@0.18.20`.
+  - Aligned root and app direct `esbuild` dependencies to `^0.27.7` for the current `vite@^8.0.3` toolchain.
+  - Re-ran the audit and confirmed the previous direct `esbuild` finding is gone; the current audit no longer includes `esbuild`.
   - Reevaluated the stale workspace-only `protobufjs` override in `packages/insomnia` and removed it because root installs already resolve `protobufjs@7.5.4`.
   - Cleaned stale NeDB architecture wording so docs and comments reflect the current `agentdb` compatibility layer.
 - Completed `manual-review-no-fix-remediation`.
@@ -108,18 +109,20 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Replaced the deprecated direct `apiconnect-wsdl` dependency in `packages/insomnia` with `@techspokes/typescript-wsdl-client`.
   - Reworked the WSDL importer to generate OpenAPI 3.1 from raw WSDL content, preserve the first SOAP service URL as the generated server, and reuse the existing OpenAPI importer instead of rebuilding a Postman collection.
   - Added a Jest-compatible fallback for the ESM-only TechSpokes package and refreshed the checked-in WSDL fixture outputs to the new OpenAPI-based import shape.
-- `npm audit` after this wave:
-  - 19 total vulnerabilities
+- Current `npm audit` snapshot:
+  - 17 total vulnerabilities
   - 0 critical
   - 12 high
-  - 2 moderate
+  - 0 moderate
   - 5 low
-- Manual-review findings:
+- Current manual-review findings:
   - `mocha` still reports a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path.
-  - `jshint` is already on its latest release, and the current audit recommendation is an unusable downgrade to `0.5.9`.
-  - `svg-text-to-path` still has no fix available, even on its latest release.
+  - `jshint` is already on its latest release, and the current audit recommendation remains an unusable downgrade to `0.5.9`.
+  - The spectral stack (`@stoplight/spectral-core`, `@stoplight/spectral-formats`, `@stoplight/spectral-ruleset-bundler`, `@stoplight/spectral-rulesets`) still carries no-fix high findings on the latest direct versions used here.
+  - `jest-environment-jsdom` now shows a low-severity fix path only through a semver-major jump to the Jest 30 stack.
+  - `svg-text-to-path` still has a low-severity issue with no fix available.
   - The deprecated `apiconnect-wsdl` path and its transitive `xmldom` critical have been cleared by the TechSpokes migration.
-- No active implementation backlog items remain; the remaining risk is concentrated in no-fix/manual-review packages and future major-upgrade follow-ups.
+- No active implementation backlog items remain; the remaining risk is concentrated in no-fix/manual-review packages and optional future major-upgrade follow-ups.
 
 ## Highest-priority findings
 
@@ -140,10 +143,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - The previous platform-coupled direct findings on `electron` and `@getinsomnia/node-libcurl` have been cleared by the Electron 41 / `node-libcurl` 3.2.1 upgrade
 - The previously straightforward `apiconnect-wsdl`, `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, `grpc-reflection-js`, and `@vitejs/plugin-react` findings have been cleared.
 
-### 3. Moderate direct dependencies that should be batched after the high-severity wave
+### 3. Remaining low-severity follow-ups
 
-- `vite` remains as a moderate direct finding after the safe `4.x` upgrade, and it still carries the residual `esbuild` advisory through its nested `esbuild@0.18.20`; the next audit fix path requires a major jump
-- The previously moderate `apiconnect-wsdl`, `@grpc/grpc-js`, `graphql`, `js-yaml`, `postcss`, and `yaml` findings have been cleared.
+- No moderate vulnerabilities remain in the current audit snapshot.
+- `jest-environment-jsdom` is now the only low-severity direct finding with an available fix path, and that path is a semver-major jump to `jest-environment-jsdom@30.3.0` and the broader Jest 30 stack.
+- The low transitive `jsdom`, `http-proxy-agent`, and `@tootallnate/once` advisories ride on that same Jest/jsdom decision.
+- `svg-text-to-path` remains a low-severity direct finding with no automatic fix.
 
 ### 4. High-risk platform/toolchain area
 
@@ -160,19 +165,16 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - Electron `41.1.1` is running against the ABI-compatible published `electron-v41.0` `node-libcurl` prebuild, because upstream `3.2.1` assets still stop at `41.0.x` on Windows
 - The WSDL importer now uses `@techspokes/typescript-wsdl-client` to generate OpenAPI 3.1 documents, which are then passed through the existing OpenAPI importer; the deprecated `apiconnect-wsdl` dependency and its `xmldom` critical path are gone
 - `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is not a usable forward fix
+- `jest-environment-jsdom` now carries the remaining low-severity fixable path, but resolving it implies a semver-major Jest/jsdom toolchain move rather than a small patch bump
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
 - Historical NeDB follow-up is now down to legacy fixture naming and compatibility language, not a current direct-package audit item
 
 ## Proposed approach
 
-1. Prioritize direct dependencies first, because they give the highest security payoff with the clearest ownership.
-1. Separate work into update waves so the hardest parts do not block easier fixes:
-   - fast direct upgrades
-   - major library upgrades
-   - Electron/native-module toolchain upgrades
-   - no-fix replacement or mitigation work
-1. Re-run install/audit/lint/type-check/test/smoke validation after each wave rather than attempting one repo-wide mega-upgrade.
-1. Keep replacements and mitigations visible in the same backlog, since version bumps alone will not eliminate the most serious long-term risks.
+1. Re-run `npm audit` after dependency or toolchain changes so this document stays aligned with the current lockfile state.
+1. Reopen active upgrade work only when upstream publishes fixable releases for the spectral stack, `jshint`, or `mocha`, or when broader test/toolchain work makes a Jest 30 migration worthwhile.
+1. Keep Electron and `@getinsomnia/node-libcurl` upgrades paired and validate install/build/package behavior together, because the Windows prebuild path is platform-coupled.
+1. Treat the remaining Jest/jsdom and SVG findings as lower-priority maintenance work unless they become exploitable in product code or piggyback naturally on other tooling upgrades.
 
 ## Todo backlog
 
@@ -199,13 +201,14 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
     - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
     - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.
 1. `manual-review-no-fix-remediation` - done
-    - Investigated the `apiconnect-wsdl` path, then later replaced it with the TechSpokes-backed WSDL importer; also reviewed `jshint`, `mocha`, `svg-text-to-path`, and the historical NeDB cleanup.
-    - Remaining no-fix/manual-review items are now documented results rather than active upgrade work.
+     - Investigated the `apiconnect-wsdl` path, then later replaced it with the TechSpokes-backed WSDL importer; also reviewed `jshint`, `mocha`, `svg-text-to-path`, and the historical NeDB cleanup.
+     - Remaining no-fix/manual-review items are now documented results rather than active upgrade work.
 1. `transitive-overrides-and-reaudit` - done
-   - Revisited the historical `protobufjs` override and removed it because it no longer affected the resolved dependency tree.
-   - Updated direct `esbuild` pins and re-audited; the remaining `esbuild` finding is now only Vite's nested copy and does not have a safe non-major fix in the current toolchain.
+    - Revisited the historical `protobufjs` override and removed it because it no longer affected the resolved dependency tree.
+    - Aligned direct `esbuild` pins to `^0.27.7` for the current Vite 8 toolchain and re-audited; the current audit no longer includes `esbuild`.
 
 ## Notes
 
 - Confirmed scope: this plan covers runtime, build, and test dependencies, because build-chain issues still affect the repo's security posture and ability to ship safely.
 - Confirmed scope: this backlog still includes replacement or mitigation work for packages without clean fixes, but the historical `nedb` package risk has already been reduced by the in-repo `agentdb` replacement.
+- Current remaining audit findings are concentrated in the spectral stack, `jshint`, `mocha`, and the low-severity Jest/jsdom/SVG toolchain.
