@@ -31,6 +31,7 @@ export default async function build(options: Options) {
       'process.env.INSOMNIA_ENV': JSON.stringify('production'),
       'process.env.BUILD_DATE': JSON.stringify(new Date()),
     };
+  const externalDependencies = Object.keys(pkg.dependencies).filter(dep => dep !== 'agentdb');
   const preload = esbuild.build({
     entryPoints: ['./src/preload.ts'],
     outfile: path.join(outdir, 'preload.js'),
@@ -52,7 +53,7 @@ export default async function build(options: Options) {
     external: [
       'electron',
       '@getinsomnia/node-libcurl',
-      ...Object.keys(pkg.dependencies),
+      ...externalDependencies,
       ...Object.keys(builtinModules),
     ],
   });

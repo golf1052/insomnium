@@ -9,6 +9,34 @@ import * as vite from 'vite';
 
 import buildMainAndPreload from '../esbuild.main';
 
+const minimumBuildNodeVersion = {
+  major: 18,
+  minor: 18,
+  patch: 2,
+};
+
+const isSupportedBuildNodeVersion = (version: string) => {
+  const [major = 0, minor = 0, patch = 0] = version
+    .replace(/^v/, '')
+    .split('.')
+    .map(part => parseInt(part, 10));
+
+  if (major !== minimumBuildNodeVersion.major) {
+    return major > minimumBuildNodeVersion.major;
+  }
+
+  if (minor !== minimumBuildNodeVersion.minor) {
+    return minor > minimumBuildNodeVersion.minor;
+  }
+
+  return patch >= minimumBuildNodeVersion.patch;
+};
+
+const readCommandVersion = (command: string, args: string[]) => {
+  const stdout = childProcess.spawnSync(command, args, { encoding: 'utf8' }).stdout;
+  return typeof stdout === 'string' ? stdout.trim() : 'unknown';
+};
+
 // Start build if ran from CLI
 if (require.main === module) {
   process.nextTick(async () => {
@@ -98,14 +126,12 @@ export const start = async () => {
   console.log('[build] Starting build');
 
   console.log(
-    `[build] npm: ${childProcess.spawnSync('npm', ['--version']).stdout}`.trim()
+    `[build] npm: ${readCommandVersion(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['--version'])}`
   );
-  console.log(
-    `[build] node: ${childProcess.spawnSync('node', ['--version']).stdout}`.trim()
-  );
+  console.log(`[build] node: ${process.version}`);
 
-  if (process.version.indexOf('v18.') !== 0) {
-    console.log('[build] Node v18.x.x is required to build');
+  if (!isSupportedBuildNodeVersion(process.version)) {
+    console.log('[build] Node >=18.18.2 is required to build');
     process.exit(1);
   }
 
