@@ -12,6 +12,7 @@ import styled from 'styled-components';
 import llama from "../../../src/ui/components/assets/llama-icon.png";
 
 import { Button } from "../../../components/ui/button";
+import { getRouteErrorMessage, getRouteErrorStack } from './route-error-helpers';
 
 const Container = styled.div({
   display: 'flex',
@@ -32,26 +33,10 @@ interface OllmaModel {
 
 export const LLMRoute: FC = () => {
   const error = useRouteError();
-  const getErrorMessage = (err: any) => {
-    if (isRouteErrorResponse(err)) {
-      return err.data;
-    }
-    if (err instanceof Error) {
-      return err.message;
-    }
-
-    return err?.message || 'Unknown error';
-  };
-  const getErrorStack = (err: any) => {
-    if (isRouteErrorResponse(err)) {
-      return err.error?.stack;
-    }
-    return err?.stack;
-  };
 
   const navigate = useNavigate();
   const navigation = useNavigation();
-  const errorMessage = getErrorMessage(error);
+  const errorMessage = getRouteErrorMessage(error);
 
   const URL = "http://localhost:11434/api/tags";
 

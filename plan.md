@@ -65,12 +65,16 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Removed the unused root `@electron-forge/cli` dependency.
   - Updated `electron-builder` and `electron-builder-squirrel-windows` to `^24.13.3` in `packages/insomnia`.
   - The remaining blocked scope is the Electron major bump and the `@getinsomnia/node-libcurl` compatibility work.
+- Completed the safe app/tooling direct-upgrade subset.
+  - Updated `react-router-dom` to `^6.30.3` and `vite` to `^4.5.14` in `packages/insomnia`.
+  - Updated root `svgo` to `^2.8.2`.
+  - Adjusted route error handling to match the newer `react-router-dom` `ErrorResponse` typing.
 - `npm audit` after this wave:
-  - 66 total vulnerabilities
+  - 63 total vulnerabilities
   - 4 critical
-  - 42 high
-  - 11 moderate
-  - 9 low
+  - 37 high
+  - 12 moderate
+  - 10 low
 - Next active backlog item: `manual-review-no-fix-remediation`.
 
 ## Highest-priority findings
@@ -80,29 +84,22 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - `@stoplight/spectral-core` with related `@stoplight/spectral-formats` and `@stoplight/spectral-rulesets`
   - Declared in `packages/insomnia/package.json` and `packages/insomnia-send-request/package.json`
   - Audit still indicates major-version remediation and transitive issues through `jsonpath-plus`, `minimatch`, and `nimma`
-- `httpsnippet`
-  - Declared in `packages/insomnia/package.json` and `packages/insomnia-send-request/package.json`
-  - Audit suggests moving to `3.0.10` as a major upgrade
-- `jsonpath-plus`
-  - Declared directly in `packages/insomnia/package.json` and `packages/insomnia-send-request/package.json`
-  - Audit suggests moving to `10.4.0`
+- The previously critical direct `httpsnippet` and `jsonpath-plus` findings have been cleared by the completed upgrade waves.
 
 ### 2. High direct dependencies with straightforward remediation paths
 
-- Root: `@xmldom/xmldom`
-- App/send-request: `axios`, `dompurify`, `lodash`, `node-forge`
-- Smoke tests and shared tooling: `express`, `mocha`, `ws`
-- App/tooling: `jshint`, `react-router-dom`, `svgo`, `vite`, `electron-builder`, `electron-builder-squirrel-windows`
+- App/tooling still showing direct high findings: `jshint`, `mocha`, `electron-builder`, `electron-builder-squirrel-windows`
+- Platform-coupled direct highs: `electron`, `@getinsomnia/node-libcurl`
+- Special-case direct high with no clean audit fix: `grpc-reflection-js`
+- The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, and `ws` findings have been cleared.
 - `packages/insomnia/package.json` also pins `protobufjs` in `overrides`, which should be reevaluated after direct dependency upgrades
 
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
 
-- `@grpc/grpc-js`
 - `esbuild`
-- `graphql`
-- `js-yaml`
-- `postcss`
-- `yaml`
+- `vite` now remains as a moderate direct finding after the safe `4.x` upgrade, with the next audit fix path requiring a major jump
+- `apiconnect-wsdl` still needs manual review because the audit fix suggestion is not obviously safe
+- The previously moderate `@grpc/grpc-js`, `graphql`, `js-yaml`, `postcss`, and `yaml` findings have been cleared.
 
 ### 4. High-risk platform/toolchain area
 
@@ -114,7 +111,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `shell.nix`
   - packaging/build behavior
   - native module compatibility for `@getinsomnia/node-libcurl`
-- `@electron-forge/cli` also shows audit pressure with no automatic fix path, so the build chain needs to be treated as a coordinated upgrade rather than a piecemeal bump
+- The unused root `@electron-forge/cli` dependency has already been removed, so the remaining build-chain exposure is concentrated in Electron, packaging helpers, and native-module compatibility
 
 ### 5. Special investigation items
 

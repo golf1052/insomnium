@@ -10,6 +10,7 @@ import styled from 'styled-components';
 
 import { DEFAULT_ORGANIZATION_ID } from '../../models/organization';
 import { Button } from '../components/themed-button';
+import { getRouteErrorMessage, getRouteErrorStack } from './route-error-helpers';
 
 const Container = styled.div({
   display: 'flex',
@@ -24,26 +25,10 @@ const Spinner = () => <i className="fa fa-spin fa-refresh" />;
 
 export const ErrorRoute: FC = () => {
   const error = useRouteError();
-  const getErrorMessage = (err: any) => {
-    if (isRouteErrorResponse(err)) {
-      return err.data;
-    }
-    if (err instanceof Error) {
-      return err.message;
-    }
-
-    return err?.message || 'Unknown error';
-  };
-  const getErrorStack = (err: any) => {
-    if (isRouteErrorResponse(err)) {
-      return err.error?.stack;
-    }
-    return err?.stack;
-  };
 
   const navigate = useNavigate();
   const navigation = useNavigation();
-  const errorMessage = getErrorMessage(error);
+  const errorMessage = getRouteErrorMessage(error);
 
   return (
     <Container>
@@ -58,7 +43,7 @@ export const ErrorRoute: FC = () => {
         Try to reload the app{' '}
         <span>{navigation.state === 'loading' ? <Spinner /> : null}</span>
       </Button>
-      <code className="selectable" style={{ wordBreak: 'break-word', margin: 'var(--padding-sm)' }}>{getErrorStack(error)}</code>
+      <code className="selectable" style={{ wordBreak: 'break-word', margin: 'var(--padding-sm)' }}>{getRouteErrorStack(error)}</code>
     </Container>
   );
 };
