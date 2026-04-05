@@ -10,9 +10,9 @@ import * as vite from 'vite';
 import buildMainAndPreload from '../esbuild.main';
 
 const minimumBuildNodeVersion = {
-  major: 18,
-  minor: 18,
-  patch: 2,
+  major: 24,
+  minor: 14,
+  patch: 0,
 };
 
 const isSupportedBuildNodeVersion = (version: string) => {

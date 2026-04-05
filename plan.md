@@ -21,9 +21,9 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - `packages/agentdb` and `packages/insomnia-testing` currently have no direct dependency surface of their own.
 - Runtime and toolchain pins are currently spread across:
   - `.nvmrc` -> Node `24.14.1`
-  - `.npmrc` -> Electron runtime target `25.2.0`
-  - `shell.nix` -> `nodejs-24_x` and `electron_25`
-  - `package.json` -> Node `>=22.12.0`
+  - `package.json` -> Node `>=24.14.0` and explicit `install-libcurl-electron` / `install-libcurl-node` scripts
+  - `.npmrc` -> `engine-strict=true` plus the existing Playwright browser-download skip flag
+  - `shell.nix` -> `nodejs-24_x` and `electron_41`
 - The external `nedb` package no longer appears in workspace manifests or `package-lock.json`; the app now uses the in-repo `agentdb` workspace, while some fixture names still reflect the legacy NeDB file format for compatibility.
 - The current builder stack also pulls in `@electron/rebuild@4.0.3` through `electron-builder-squirrel-windows`, which requires Node `>=22.12.0`; the older Node 18 pins were therefore stale relative to the checked-in dependency graph.
 - `npm audit` baseline at plan time:
@@ -54,10 +54,10 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - Completed `httpsnippet-major-upgrade`.
   - Updated `httpsnippet` to `^3.0.10` in `packages/insomnia` and `packages/insomnia-send-request`.
   - Existing generate-code and copy-as-cURL integrations remained compatible without code changes.
-- `electron-toolchain-upgrade` and `node-libcurl-compatibility` are currently blocked in this environment.
+- Initial `electron-toolchain-upgrade` and `node-libcurl-compatibility` attempts were blocked in this environment.
   - Attempted to align the toolchain around Electron 41 and Node 20, then upgrade `@getinsomnia/node-libcurl`.
   - Repeated installs failed during `node-pre-gyp` startup with a `tar` / `minipass` crash under both the current Node 24 runtime and a Node 20.20.2 retry.
-  - The toolchain file edits were intentionally reverted instead of committing a broken install state.
+  - The toolchain file edits were intentionally reverted instead of committing a broken install state, and that failed path was later superseded by the successful combined Electron 41 / `node-libcurl` 3.2.1 upgrade described below.
 - Completed `smoke-test-and-shared-tooling-security-upgrades`.
   - Updated `@grpc/grpc-js` to `^1.14.3` in `packages/insomnia` and `packages/insomnia-smoke-test`.
   - Updated `mocha` to `^10.8.2` in `packages/insomnia`.
@@ -93,10 +93,17 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - The package now requires Node `>=24.14.0`, which matches the repo's current `.nvmrc`, but Kong does not publish a Windows prebuilt binary for `electron-v25.2`, so installs fall back to a source build.
   - The Windows source-build path got past the Python 3.12 `distutils` issue with a throwaway virtualenv, then failed in `curl-for-windows` because `nasm` is not present in this environment.
   - This means the upgrade path is now blocked by Electron 25 being outside the upstream prebuilt-binary window and by missing Windows native-build prerequisites, not by the old `node-pre-gyp` crash.
+- Completed `electron-toolchain-upgrade` and `node-libcurl-compatibility` together.
+  - Used the public upstream pairing from `Kong/insomnia#9734` as the base path, then moved one Electron patch level farther to `41.1.1` after confirming it shares ABI `145` with `41.0.3`.
+  - Updated `packages/insomnia` to `electron@41.1.1`.
+  - Updated `@getinsomnia/node-libcurl` to `3.2.1` in `packages/insomnia` and `packages/insomnia-send-request`.
+  - Replaced the stale `.npmrc` Electron target with explicit root `install-libcurl-electron` / `install-libcurl-node` scripts plus a `postinstall` hook.
+  - The Electron install hook intentionally targets `41.0.3`, because `@getinsomnia/node-libcurl@3.2.1` publishes Windows prebuilt assets for `electron-v41.0` but not `electron-v41.1`, while Electron `41.1.1` remains ABI-compatible with that published prebuilt.
+  - `npm install`, `npm run lint`, `npm run type-check`, `npm test`, `npm run app-build`, and `BUILD_TARGETS=portable npm run app-package` all passed on Windows after the combined upgrade.
 - `npm audit` after this wave:
-  - 52 total vulnerabilities
+  - 44 total vulnerabilities
   - 4 critical
-  - 28 high
+  - 20 high
   - 12 moderate
   - 8 low
 - Manual-review findings:
@@ -118,8 +125,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 ### 2. Remaining high direct dependencies
 
 - App/tooling still showing direct high findings: `jshint`
-- Platform-coupled direct highs: `electron`, `@getinsomnia/node-libcurl`
 - `mocha` still shows a direct high via `serialize-javascript`, and the current audit data does not offer a viable forward-only upgrade path
+- The previous platform-coupled direct findings on `electron` and `@getinsomnia/node-libcurl` have been cleared by the Electron 41 / `node-libcurl` 3.2.1 upgrade
 - The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, and `grpc-reflection-js` findings have been cleared.
 
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
@@ -130,21 +137,17 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 ### 4. High-risk platform/toolchain area
 
-- `electron` is pinned at `25.8.1` in `packages/insomnia/package.json`
-- Audit recommends a much newer major Electron line
-- The current builder stack already requires Node `>=22.12.0` via `@electron/rebuild@4.0.3`, so the repo's Node pins were updated to match the actual installable toolchain
-- Electron upgrade work is coupled to:
-  - `.npmrc`
-  - `.nvmrc`
-  - `shell.nix`
-  - packaging/build behavior
-  - native module compatibility for `@getinsomnia/node-libcurl`
-- The unused root `@electron-forge/cli` dependency has already been removed and the packaging helpers are now on `26.8.1`, so the remaining build-chain exposure is concentrated in Electron and native-module compatibility
+- `electron` is now pinned at `41.1.1` in `packages/insomnia/package.json`
+- `@getinsomnia/node-libcurl` is now pinned at `3.2.1` in both app workspaces
+- The current builder stack and root engines are aligned to Node `>=24.14.0`
+- Root installs now use explicit `install-libcurl-electron` / `install-libcurl-node` scripts instead of a checked-in `.npmrc` Electron target
+- Windows installs intentionally consume the published `electron-v41.0` `node-libcurl` prebuild because Electron `41.1.1` shares ABI `145` with `41.0.3`, while upstream does not publish a `electron-v41.1` Windows asset for `3.2.1`
+- The unused root `@electron-forge/cli` dependency has already been removed and the packaging helpers are now on `26.8.1`
 
 ### 5. Special investigation items
 
-- `@getinsomnia/node-libcurl` has a high-severity finding and is tightly coupled to Electron / Node ABI compatibility
-- `@getinsomnia/node-libcurl@3.2.1` is a plausible target now that the repo runs on Node 24, but the Electron 25 Windows install path still lacks an upstream prebuilt binary and currently requires additional native prerequisites such as `nasm`
+- `@getinsomnia/node-libcurl` has been upgraded to `3.2.1` and now installs successfully from the upstream Electron 41 Windows prebuild path in this repo
+- Electron `41.1.1` is running against the ABI-compatible published `electron-v41.0` `node-libcurl` prebuild, because upstream `3.2.1` assets still stop at `41.0.x` on Windows
 - `apiconnect-wsdl` does have a newer `2.0.36` line, but it is blocked by a Node engine conflict with the current builder stack
 - `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is not a usable forward fix
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
@@ -175,14 +178,13 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 1. `httpsnippet-major-upgrade` - done
     - Move `httpsnippet` to a current safe major in both app packages.
     - Validate generated request snippets and any export/copy workflows that depend on it.
-1. `electron-toolchain-upgrade` - blocked
-    - Upgrade `electron`, the remaining runtime/toolchain alignment files, and any packaging pieces still tied to the Electron jump.
-    - `electron-builder` and `electron-builder-squirrel-windows` were moved to `^26.8.1`, the package config was adapted to the new schema, and the unused root `@electron-forge/cli` dependency was removed.
-    - Align `.npmrc`, `.nvmrc`, `shell.nix`, and related build assumptions.
-1. `node-libcurl-compatibility` - blocked
-    - Upgrade `@getinsomnia/node-libcurl` alongside the chosen Electron/Node versions.
-    - `@getinsomnia/node-libcurl@3.2.1` no longer reproduces the old `tar` / `minipass` crash, but it has no `electron-v25.2` Windows prebuilt binary and the source-build fallback currently stops at missing `nasm`.
-    - Verify native build, development startup, and packaging behavior once Electron moves into the upstream prebuilt range or the Windows native build prerequisites are provisioned.
+1. `electron-toolchain-upgrade` - done
+    - Upgraded `electron` to `41.1.1`, aligned the checked-in toolchain files, and replaced the stale `.npmrc` Electron target with explicit root install scripts.
+    - `electron-builder` and `electron-builder-squirrel-windows` were already on `^26.8.1`, and portable packaging now passes on the Electron 41 app build.
+1. `node-libcurl-compatibility` - done
+    - Upgraded `@getinsomnia/node-libcurl` to `3.2.1` in both app workspaces.
+    - Windows installs now consume the published `electron-v41.0` prebuild through the root postinstall hook, which remains ABI-compatible with Electron `41.1.1`.
+    - Verified native install, development startup, test/build flow, and portable packaging behavior on the combined Electron 41 / Node 24 pairing.
 1. `smoke-test-and-shared-tooling-security-upgrades` - done
     - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
     - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.

@@ -11,7 +11,7 @@
   },
   "homepage": "https://github.com/ArchGPT/insomnium#readme",
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=24.14.0",
     "npm": ">=8.19.0"
   },
   "workspaces": [
@@ -28,6 +28,8 @@
     "test": "npm run test --workspaces --if-present",
     "lint:markdown": "npx markdownlint-cli2 \"**/*.md\" \"#**/node_modules\"",
     "clean": "git clean -dfX",
+    "install-libcurl-electron": "node-pre-gyp install --directory node_modules/@getinsomnia/node-libcurl --update-binary --runtime=electron --target=41.0.3",
+    "install-libcurl-node": "node-pre-gyp install --directory node_modules/@getinsomnia/node-libcurl --update-binary --runtime=node --target=24.14.0",
     "inso-start": "npm start --workspace=packages/insomnia-inso",
     "inso-package": "npm run build:sr --workspace=packages/insomnia && npm run package --workspace=packages/insomnia-inso",
     "inso-package:artifacts": "npm run artifacts --workspace=packages/insomnia-inso",
@@ -39,6 +41,7 @@
     "test:smoke:build": "npm run test:build --workspace=packages/insomnia-smoke-test -- --project=Smoke",
     "test:smoke:package": "npm run test:package --workspace=packages/insomnia-smoke-test -- --project=Smoke",
     "test:smoke:cli": "npm run test:cli --workspace=packages/insomnia-smoke-test",
+    "postinstall": "npm run install-libcurl-electron",
     "changelog-image": "esr ./scripts/changelog-image/changelog-image.ts",
     "download-all-npm-plugins": "esr ./scripts/download-all-npm-plugins.ts"
   },

@@ -1,4 +1,4 @@
-import electron, { type BrowserWindow as ElectronBrowserWindow, type MenuItemConstructorOptions } from 'electron';
+import electron, { type BaseWindow, type BrowserWindow as ElectronBrowserWindow, type MenuItemConstructorOptions } from 'electron';
 import fs from 'fs';
 import * as os from 'os';
 import path from 'path';
@@ -36,6 +36,9 @@ interface Bounds {
   x?: number;
   y?: number;
 }
+
+const isBrowserWindow = (window: BaseWindow | null | undefined): window is ElectronBrowserWindow =>
+  !!window && window instanceof BrowserWindow;
 
 export function init() {
   initLocalStorage();
@@ -144,7 +147,7 @@ export function createWindow() {
       {
         label: `${MNEMONIC_SYM}Preferences`,
         click: function(_menuItem, window) {
-          if (!window || !window.webContents) {
+          if (!isBrowserWindow(window)) {
             return;
           }
 
@@ -154,7 +157,7 @@ export function createWindow() {
       {
         label: `${MNEMONIC_SYM}Changelog`,
         click: function(_menuItem, window) {
-          if (!window || !window.webContents) {
+          if (!isBrowserWindow(window)) {
             return;
           }
           const href = changelogUrl();
@@ -355,7 +358,7 @@ export function createWindow() {
         label: `${MNEMONIC_SYM}Keyboard Shortcuts`,
         accelerator: 'CmdOrCtrl+Shift+?',
         click: (_menuItem, w) => {
-          if (!w || !w.webContents) {
+          if (!isBrowserWindow(w)) {
             return;
           }
 
@@ -481,13 +484,21 @@ export function createWindow() {
       {
         label: `${MNEMONIC_SYM}Clear a model`,
         click: function(_menuItem, window) {
-          window?.webContents?.send('clear-model');
+          if (!isBrowserWindow(window)) {
+            return;
+          }
+
+          window.webContents.send('clear-model');
         },
       },
       {
         label: `Clear ${MNEMONIC_SYM}all models`,
         click: function(_menuItem, window) {
-          window?.webContents?.send('clear-all-models');
+          if (!isBrowserWindow(window)) {
+            return;
+          }
+
+          window.webContents.send('clear-all-models');
         },
       },
       {

@@ -2,17 +2,17 @@
 
 ## install node version of libcurl
 
-npm install will download the electron version of libcurl but for inso we need the node version
+`npm install` now restores the Electron build of `node-libcurl` via the root `postinstall` hook.
+For CLI-style Node usage, switch to the Node build with:
 
 ```shell
-node_modules/.bin/node-pre-gyp install --update-binary --directory node_modules/@getinsomnia/node-libcurl
+npm run install-libcurl-node
 ```
 
-to download the electron version of node-libcurl you should remove the module and npm install again
+To switch back to the Electron build, run:
 
 ```shell
-rm -rf node_modules/@getinsomnia/
-npm install
+npm run install-libcurl-electron
 ```
 
 ## Run CLI Smoke Tests

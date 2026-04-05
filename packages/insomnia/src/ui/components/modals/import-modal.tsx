@@ -124,10 +124,15 @@ const FileView = styled.div({
   width: '100%',
 });
 
+type FileWithPath = File & { path: string };
+
+const isFileWithPath = (file: File | null | undefined): file is FileWithPath =>
+  typeof (file as FileWithPath | undefined)?.path === 'string';
+
 const FileField: FC = () => {
   const id = useId();
   const dropRef = useRef<HTMLLabelElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | undefined>();
+  const [selectedFile, setSelectedFile] = useState<FileWithPath | undefined>();
   const { isDropTarget, dropProps } = useDrop({
     ref: dropRef,
     onDrop: async event => {
@@ -136,15 +141,16 @@ const FileField: FC = () => {
           ? await event.items[0].getFile()
           : undefined;
 
-      if (file) {
-        setSelectedFile(file);
-      }
+      setSelectedFile(isFileWithPath(file) ? file : undefined);
     },
   });
   return (
     <div>
       <FileInput
-        onChange={e => setSelectedFile(e.currentTarget.files?.[0])}
+        onChange={e => {
+          const file = e.currentTarget.files?.[0];
+          setSelectedFile(isFileWithPath(file) ? file : undefined);
+        }}
         accept={[
           '',
           'sh',
