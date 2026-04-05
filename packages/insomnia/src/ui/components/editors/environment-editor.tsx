@@ -5,7 +5,7 @@ import { JSON_ORDER_PREFIX, JSON_ORDER_SEPARATOR } from '../../../common/constan
 import { NUNJUCKS_TEMPLATE_GLOBAL_PROPERTY_NAME } from '../../../templating';
 import { CodeEditor, CodeEditorHandle } from '../codemirror/code-editor';
 
-// NeDB field names cannot begin with '$' or contain a period '.'
+// agentdb preserves the legacy NeDB-compatible field-name restrictions.
 // Docs: https://github.com/DeNA/nedb#inserting-documents
 const INVALID_NEDB_KEY_REGEX = /^\$|\./;
 

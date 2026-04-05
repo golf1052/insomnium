@@ -5,7 +5,7 @@ import { strings } from './strings';
 
 /**
  * The collection of available hotkeys' and their descriptions.
- * @IMPORTANT Not using dot, because NeDB prohibits field names to contain dots.
+ * @IMPORTANT Not using dot, because the agentdb compatibility layer preserves the historical NeDB field-name restrictions.
  */
 export const keyboardShortcutDescriptions: Record<KeyboardShortcut, string> = {
   'workspace_showSettings': `Show ${strings.document.singular} / ${strings.collection.singular} Settings`,

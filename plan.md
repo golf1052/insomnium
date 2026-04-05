@@ -23,7 +23,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `.nvmrc` -> Node `18.18.2`
   - `.npmrc` -> Electron runtime target `25.2.0`
   - `shell.nix` -> `nodejs-18_x` and `electron_25`
-- The external `nedb` package no longer appears in workspace manifests or `package-lock.json`; the app now uses the in-repo `agentdb` workspace, while some docs and fixtures still refer to the legacy NeDB file format.
+- The external `nedb` package no longer appears in workspace manifests or `package-lock.json`; the app now uses the in-repo `agentdb` workspace, while some fixture names still reflect the legacy NeDB file format for compatibility.
 - `npm audit` baseline at plan time:
   - 102 total vulnerabilities
   - 9 critical
@@ -75,6 +75,11 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Replaced `grpc-reflection-js` with the maintained `@grpc/reflection` package in `packages/insomnia`.
   - Added a local reflection client that uses the official v1alpha reflection proto and preserves the existing service/method loading flow.
   - Updated the gRPC IPC tests to mock the new client seam instead of the removed package.
+- Completed `transitive-overrides-and-reaudit`.
+  - Updated root and app direct `esbuild` dependencies to `^0.28.0`.
+  - Re-ran the audit and confirmed the direct `esbuild` finding is gone; the remaining `esbuild` advisory now only comes from Vite 4's nested `esbuild@0.18.20`.
+  - Reevaluated the stale workspace-only `protobufjs` override in `packages/insomnia` and removed it because root installs already resolve `protobufjs@7.5.4`.
+  - Cleaned stale NeDB architecture wording so docs and comments reflect the current `agentdb` compatibility layer.
 - `npm audit` after this wave:
   - 52 total vulnerabilities
   - 4 critical
@@ -104,8 +109,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 ### 3. Moderate direct dependencies that should be batched after the high-severity wave
 
-- `esbuild`
-- `vite` now remains as a moderate direct finding after the safe `4.x` upgrade, with the next audit fix path requiring a major jump
+- `vite` remains as a moderate direct finding after the safe `4.x` upgrade, and it still carries the residual `esbuild` advisory through its nested `esbuild@0.18.20`; the next audit fix path requires a major jump
 - `apiconnect-wsdl` still needs manual review because the audit fix suggestion is not obviously safe
 - The previously moderate `@grpc/grpc-js`, `graphql`, `js-yaml`, `postcss`, and `yaml` findings have been cleared.
 
@@ -127,7 +131,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - `apiconnect-wsdl` appears to pull vulnerable XML-related dependencies; the audit fix suggestion is not obviously safe and needs manual review
 - `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is a downgrade to `7.2.0` rather than a usable forward fix
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
-- Historical NeDB follow-up is now documentation and compatibility cleanup around `agentdb` and legacy fixtures, not a current direct-package audit item
+- Historical NeDB follow-up is now down to legacy fixture naming and compatibility language, not a current direct-package audit item
 
 ## Proposed approach
 
@@ -165,11 +169,11 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
     - Update `express`, `graphql`, `mocha`, `ws`, and related smoke-test or shared-tooling dependencies.
     - Rework or replace packages that cannot be updated cleanly, especially `grpc-reflection-js`.
 1. `manual-review-no-fix-remediation` - in progress
-    - Investigate `apiconnect-wsdl`, `grpc-reflection-js`, `svg-text-to-path`, and other audit items without a clean automatic path.
-    - Clean up stale NeDB references separately so the backlog reflects the current `agentdb` architecture.
-1. `transitive-overrides-and-reaudit`
-   - Revisit `overrides` such as `protobufjs`.
-   - Add targeted overrides only where direct upgrades are insufficient, then re-audit to measure residual risk.
+    - Investigate `apiconnect-wsdl`, `jshint`, `mocha`, `svg-text-to-path`, and other audit items without a clean automatic path.
+    - The stale NeDB documentation cleanup is complete; remaining work is package-level manual review.
+1. `transitive-overrides-and-reaudit` - done
+   - Revisited the historical `protobufjs` override and removed it because it no longer affected the resolved dependency tree.
+   - Updated direct `esbuild` pins and re-audited; the remaining `esbuild` finding is now only Vite's nested copy and does not have a safe non-major fix in the current toolchain.
 
 ## Notes
 

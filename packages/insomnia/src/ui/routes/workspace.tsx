@@ -131,7 +131,7 @@ export const workspaceLoader: LoaderFunction = async ({
   const sortOrder = searchParams.get('sortOrder') as SortOrder;
   const sortFunction = sortMethodMap[sortOrder] || sortMethodMap['type-manual'];
 
-  // first recursion to get all the folders ids in order to use nedb search by an array
+  // Recurse through folders first so the database query can use a single parentId $in array.
   const flattenFoldersIntoList = async (id: string): Promise<string[]> => {
     const parentIds: string[] = [id];
     const folderIds = (await models.requestGroup.findByParentId(id)).map(r => r._id);

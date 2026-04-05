@@ -153,7 +153,7 @@
     "electron-builder": "^26.8.1",
     "electron-builder-squirrel-windows": "^26.8.1",
     "electron-devtools-installer": "^3.2.1",
-    "esbuild": "^0.16.0",
+    "esbuild": "^0.28.0",
     "esbuild-plugin-alias": "0.2.1",
     "esbuild-runner": "^2.2.2",
     "fuzzysort": "^1.2.1",
@@ -192,9 +192,6 @@
   },
   "dev": {
     "dev-server-port": 3334
-  },
-  "overrides": {
-    "protobufjs": "7.2.4"
   },
   "bin": {
     "insomnia": "bin/yarn-standalone.js"

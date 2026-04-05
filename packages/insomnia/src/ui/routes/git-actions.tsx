@@ -85,7 +85,7 @@ export const gitRepoAction: ActionFunction = async ({
       `version-control/git/${gitRepository._id}`
     );
 
-    // All app data is stored within a namespaced GIT_INSOMNIA_DIR directory at the root of the repository and is read/written from the local NeDB database
+    // All app data is stored within a namespaced GIT_INSOMNIA_DIR directory at the repo root and is read/written through the local project database.
     const neDbClient = NeDBClient.createClient(workspaceId, projectId);
 
     // All git metadata in the GIT_INTERNAL_DIR directory is stored in a git/ directory on the filesystem
