@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
 import styled from 'styled-components';
-import YAML from 'yaml';
-import YAMLSourceMap from 'yaml-source-map';
+import YAML, { LineCounter, isMap, isNode, isPair, isScalar, isSeq } from 'yaml';
+import type { Node } from 'yaml';
 
 import type { ApiSpec } from '../../../models/api-spec';
 import { useAIContext } from '../../context/app/ai-context';
@@ -13,6 +13,82 @@ interface Props {
   apiSpec: ApiSpec;
   handleSetSelection: (chStart: number, chEnd: number, lineStart: number, lineEnd: number) => void;
 }
+
+type SpecPathSegment = string | number;
+
+const getNodeKey = (node: unknown) => {
+  if (isScalar(node)) {
+    return node.value;
+  }
+
+  if (isNode(node)) {
+    return node.toJSON();
+  }
+
+  return null;
+};
+
+const findNodeForPath = (
+  root: Node | null | undefined,
+  itemPath: SpecPathSegment[],
+): Node | null => {
+  let currentNode = root ?? null;
+
+  for (const segment of itemPath) {
+    if (!currentNode) {
+      return null;
+    }
+
+    if (isMap(currentNode)) {
+      const pair = currentNode.items.find(item => {
+        if (!('key' in item)) {
+          return false;
+        }
+
+        return getNodeKey(item.key) === segment;
+      });
+
+      const nextNode = pair?.value ?? null;
+      currentNode = nextNode && isNode(nextNode) ? nextNode : null;
+      continue;
+    }
+
+    if (isSeq(currentNode)) {
+      if (typeof segment !== 'number') {
+        return null;
+      }
+
+      const item = currentNode.items[segment];
+      const nextNode = item ? (isPair(item) ? item.value : item) : null;
+      currentNode = nextNode && isNode(nextNode) ? nextNode : null;
+      continue;
+    }
+
+    return null;
+  }
+
+  return currentNode;
+};
+
+const findSelectionStart = (contents: string, itemPath: SpecPathSegment[]) => {
+  const lineCounter = new LineCounter();
+  const document = YAML.parseDocument(contents, {
+    keepSourceTokens: true,
+    lineCounter,
+  });
+  const node = findNodeForPath(document.contents, itemPath);
+
+  if (!node?.range) {
+    return null;
+  }
+
+  const { line, col } = lineCounter.linePos(node.range[0]);
+
+  return {
+    line: Math.max(line, 1),
+    col: Math.max(col, 1),
+  };
+};
 
 const StyledSpecEditorSidebar = styled.div`
   overflow: hidden;
@@ -34,15 +110,10 @@ export const SpecEditorSidebar: FC<Props> = ({ apiSpec, handleSetSelection }) =>
       scrollPosition.start.line = 1;
     } catch { }
 
-    const sourceMap = new YAMLSourceMap();
-    const specMap = sourceMap.index(
-      YAML.parseDocument(apiSpec.contents, {
-        keepCstNodes: true,
-      }),
-    );
-    const itemMappedPosition = sourceMap.lookup(itemPath, specMap);
+    const itemMappedPosition = findSelectionStart(apiSpec.contents, itemPath);
     if (itemMappedPosition) {
-      scrollPosition.start.line += itemMappedPosition.start.line;
+      scrollPosition.start.line += itemMappedPosition.line;
+      scrollPosition.start.col = itemMappedPosition.col;
     }
     const isServersSection = itemPath[0] === 'servers';
     if (!isServersSection) {

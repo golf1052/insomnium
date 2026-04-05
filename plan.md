@@ -31,6 +31,22 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - 18 moderate
   - 13 low
 
+## Progress updates
+
+- Completed `root-and-common-security-bumps`.
+  - Updated root `@xmldom/xmldom` to `^0.8.12`.
+  - Updated `packages/insomnia` to `js-yaml@^4.1.1`, `yaml@^2.8.3`, and `postcss@^8.5.8`.
+  - Updated `packages/insomnia-send-request` to `yaml@^2.8.3`.
+  - Removed the legacy `yaml-source-map` dependency and replaced its spec-editor usage with native `yaml@2` AST traversal.
+  - Added a Jest module mapping so app tests resolve `yaml` to the Node entry point instead of the browser bundle.
+- `npm audit` after this wave:
+  - 100 total vulnerabilities
+  - 9 critical
+  - 61 high
+  - 17 moderate
+  - 13 low
+- Next active backlog item: `http-parser-and-sanitizer-updates`.
+
 ## Highest-priority findings
 
 ### 1. Critical direct dependencies
@@ -95,12 +111,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 ## Todo backlog
 
-1. `root-and-common-security-bumps`
-   - Update root `@xmldom/xmldom` and other low-risk direct packages such as `js-yaml`, `postcss`, and `yaml`.
-   - Refresh lockfile state and reduce the easy audit findings first.
-1. `http-parser-and-sanitizer-updates`
-   - Update `axios`, `dompurify`, `lodash`, `node-forge`, and adjacent direct app/send-request dependencies.
-   - Verify request sending, auth flows, and HTML rendering paths.
+1. `root-and-common-security-bumps` - done
+    - Update root `@xmldom/xmldom` and other low-risk direct packages such as `js-yaml`, `postcss`, and `yaml`.
+    - Refresh lockfile state and reduce the easy audit findings first.
+1. `http-parser-and-sanitizer-updates` - in progress
+    - Update `axios`, `dompurify`, `lodash`, `node-forge`, and adjacent direct app/send-request dependencies.
+    - Verify request sending, auth flows, and HTML rendering paths.
 1. `spectral-stack-major-upgrade`
    - Upgrade `@stoplight/spectral-core`, `@stoplight/spectral-formats`, `@stoplight/spectral-rulesets`, and `jsonpath-plus`.
    - Validate ruleset loading, linting behavior, and bundling.
