@@ -77,6 +77,9 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - 30 high
   - 12 moderate
   - 8 low
+- Manual-review findings so far:
+  - `grpc-reflection-js` is still blocked on the package itself: it pulls `lodash.set@4.3.2`, has no newer upstream release, and the official `@grpc/reflection` package is a server-side helper rather than a drop-in client replacement for this app.
+  - `mocha` still reports a direct high via `serialize-javascript`, but the current npm audit suggestion is a downgrade to `7.2.0`, so it should be treated as a manual-review item rather than a straightforward forward upgrade.
 - Next active backlog item: `manual-review-no-fix-remediation`.
 
 ## Highest-priority findings
@@ -88,11 +91,12 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Audit still indicates major-version remediation and transitive issues through `jsonpath-plus`, `minimatch`, and `nimma`
 - The previously critical direct `httpsnippet` and `jsonpath-plus` findings have been cleared by the completed upgrade waves.
 
-### 2. High direct dependencies with straightforward remediation paths
+### 2. Remaining high direct dependencies
 
-- App/tooling still showing direct high findings: `jshint`, `mocha`
+- App/tooling still showing direct high findings: `jshint`
 - Platform-coupled direct highs: `electron`, `@getinsomnia/node-libcurl`
 - Special-case direct high with no clean audit fix: `grpc-reflection-js`
+- `mocha` still shows a direct high via `serialize-javascript`, but npm audit currently points to an older `7.2.0` release instead of a viable forward upgrade
 - The previously straightforward `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, and `electron-builder-squirrel-windows` findings have been cleared.
 - `packages/insomnia/package.json` also pins `protobufjs` in `overrides`, which should be reevaluated after direct dependency upgrades
 
@@ -119,7 +123,8 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 
 - `@getinsomnia/node-libcurl` has a high-severity finding and is tightly coupled to Electron / Node ABI compatibility
 - `apiconnect-wsdl` appears to pull vulnerable XML-related dependencies; the audit fix suggestion is not obviously safe and needs manual review
-- `grpc-reflection-js` in the smoke test workspace has no automatic audit fix
+- `grpc-reflection-js` has no automatic audit fix, and the remaining high finding comes from its bundled `lodash.set@4.3.2` dependency with no newer upstream release
+- `mocha` still reports a direct high via `serialize-javascript`, but the audit recommendation is a downgrade to `7.2.0` rather than a usable forward fix
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
 - Historical NeDB follow-up is now documentation and compatibility cleanup around `agentdb` and legacy fixtures, not a current direct-package audit item
 
