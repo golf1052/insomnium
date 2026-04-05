@@ -8,6 +8,9 @@ import { electronNodeRequire } from './vite-plugin-electron-node-require';
 
 export default defineConfig(({ mode }) => {
   const __DEV__ = mode !== 'production';
+  const nodeRequiredModules = Object.entries(pkg.dependencies)
+    .filter(([, version]) => !version.startsWith('file:') && !version.startsWith('workspace:'))
+    .map(([name]) => name);
 
   return {
     mode,
@@ -44,7 +47,7 @@ export default defineConfig(({ mode }) => {
       electronNodeRequire({
         modules: [
           'electron',
-          ...Object.keys(pkg.dependencies),
+          ...nodeRequiredModules,
           ...builtinModules.filter(m => m !== 'buffer'),
           ...builtinModules.map(m => `node:${m}`),
         ],

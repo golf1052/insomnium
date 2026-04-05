@@ -78,13 +78,17 @@ app.on('ready', async () => {
   disableSpellcheckerDownload();
 
   if (isDevelopment()) {
-    try {
-      const extensions = [REACT_DEVELOPER_TOOLS];
-      const extensionsPlural = extensions.length > 0 ? 's' : '';
-      const names = await Promise.all(extensions.map(extension => installExtension(extension)));
-      console.log(`[electron-extensions] Added DevTools Extension${extensionsPlural}: ${names.join(', ')}`);
-    } catch (err) {
-      console.log('[electron-extensions] An error occurred: ', err);
+    if (['1', 'true'].includes(process.env.INSOMNIUM_INSTALL_DEVTOOLS ?? '')) {
+      try {
+        const extensions = [REACT_DEVELOPER_TOOLS];
+        const extensionsPlural = extensions.length > 0 ? 's' : '';
+        const names = await Promise.all(extensions.map(extension => installExtension(extension)));
+        console.log(`[electron-extensions] Added DevTools Extension${extensionsPlural}: ${names.join(', ')}`);
+      } catch (err) {
+        console.log('[electron-extensions] An error occurred: ', err);
+      }
+    } else {
+      console.log('[electron-extensions] Skipping DevTools auto-install; set INSOMNIUM_INSTALL_DEVTOOLS=true to enable it.');
     }
   }
 
