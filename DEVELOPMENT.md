@@ -53,6 +53,8 @@ Insomnium stores data in a few places:
 
 We use [Jest](https://jestjs.io/) and [react-testing-library](https://testing-library.com/docs/react-testing-library) to write our unit tests, and [Playwright](https://github.com/microsoft/playwright) for integration tests.
 
+Jest is the framework for the repository's own automated tests. Separately, the app ships a saved test-suite feature backed by [`packages/insomnia-testing`](packages/insomnia-testing), which generates Mocha/Chai test code and runs it programmatically against requests from the UI. That split is why the monorepo contains both Jest and Mocha dependencies: Jest is used for contributor-facing automated tests, while Mocha and Chai are part of the product runtime for user-authored test suites.
+
 Unit tests exist alongside the file under test. For example:
 
 - `/src/common/database.js` contains the database business logic

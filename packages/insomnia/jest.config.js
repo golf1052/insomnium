@@ -3,10 +3,8 @@ const path = require('node:path');
 /** @type { import('@jest/types').Config.InitialOptions } */
 module.exports = {
   preset: '../../jest-preset.js',
-  globals: {
-    'ts-jest': {
-      isolatedModules: true,
-    },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true }],
   },
   cache: false,
   modulePathIgnorePatterns: ['./src/network/.*/__mocks__'],

@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import fs from 'fs';
-import { SpyInstance } from 'jest-mock';
 import os from 'os';
 import path from 'path';
 
@@ -8,16 +7,18 @@ import { globalBeforeEach } from '../../../__jest__/before-each';
 import * as models from '../../../models';
 import { writeProtoFile } from '../write-proto-file';
 
-describe('writeProtoFile', () => {
-  let existsSyncSpy: SpyInstance<any>;
-  let tmpDirSpy: SpyInstance<any>;
-  let writeFileSpy: SpyInstance<any>;
+const setupSpies = () => ({
+  existsSyncSpy: jest.spyOn(fs, 'existsSync'),
+  tmpDirSpy: jest.spyOn(os, 'tmpdir'),
+  writeFileSpy: jest.spyOn(fs.promises, 'writeFile'),
+});
 
-  const _setupSpies = () => {
-    existsSyncSpy = jest.spyOn(fs, 'existsSync');
-    tmpDirSpy = jest.spyOn(os, 'tmpdir');
-    writeFileSpy = jest.spyOn(fs.promises, 'writeFile');
-  };
+type TestSpies = ReturnType<typeof setupSpies>;
+
+describe('writeProtoFile', () => {
+  let existsSyncSpy: TestSpies['existsSyncSpy'];
+  let tmpDirSpy: TestSpies['tmpDirSpy'];
+  let writeFileSpy: TestSpies['writeFileSpy'];
 
   const _configureSpies = (tmpDir: string, exists: boolean) => {
     existsSyncSpy.mockReturnValue(exists);
@@ -35,7 +36,7 @@ describe('writeProtoFile', () => {
     await globalBeforeEach();
 
     // Spies should be setup AFTER globalBeforeEach()
-    _setupSpies();
+    ({ existsSyncSpy, tmpDirSpy, writeFileSpy } = setupSpies());
   });
 
   afterEach(() => {

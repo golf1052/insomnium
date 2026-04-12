@@ -46,8 +46,8 @@
     "download-all-npm-plugins": "esr ./scripts/download-all-npm-plugins.ts"
   },
   "devDependencies": {
-    "@jest/globals": "^28.1.0",
-    "@jest/types": "^28.1.0",
+    "@jest/globals": "^30.3.0",
+    "@jest/types": "^30.3.0",
     "@types/chai": "^4.3.5",
     "@types/eslint": "^8.4.3",
     "@types/mocha": "^10.0.10",
@@ -67,13 +67,13 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
-    "jest": "^28.1.0",
+    "jest": "^30.3.0",
     "svg-text-to-path": "^1.1.2",
     "svgo": "^2.8.2",
-    "ts-jest": "^28.0.1",
+    "ts-jest": "^29.4.9",
     "tslib": "2.0.1",
     "type-fest": "^2.12.0",
-    "typescript": "^5.1.6"
+    "typescript": "^5.4.5"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.8.12"

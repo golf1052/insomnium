@@ -2,10 +2,7 @@
 
 module.exports = {
   preset: '../../jest-preset.js',
-  globals: {
-    'ts-jest': {
-      isolatedModules: true,
-      tsconfig: '../../tsconfig.base.json',
-    },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true, tsconfig: '../../tsconfig.base.json' }],
   },
 };

@@ -73,6 +73,8 @@ npm test
 npm run dev
 ```
 
+Most workspace tests in this repository run under Jest. The separate `packages/insomnia-testing` workspace exists to power the app's built-in test-suite feature, where saved tests are generated as Mocha/Chai code and executed at runtime. Seeing both Jest and Mocha in the dependency tree is therefore expected.
+
 ### Linux
 
 If you are on Linux, you may need to install the following supporting packages:

@@ -11,10 +11,7 @@ module.exports = {
       statements: 90,
     },
   },
-  globals: {
-    'ts-jest': {
-      isolatedModules: true,
-      tsconfig: '../../tsconfig.base.json',
-    },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true, tsconfig: '../../tsconfig.base.json' }],
   },
 };

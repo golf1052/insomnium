@@ -125,7 +125,7 @@ describe('NeDBClient', () => {
       // Act
       await neDbClient.writeFile(filePath, YAML.stringify(env));
       // Assert
-      expect(upsertSpy).not.toBeCalled();
+      expect(upsertSpy).not.toHaveBeenCalled();
       // Cleanup
       upsertSpy.mockRestore();
     });
