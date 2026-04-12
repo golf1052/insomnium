@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "isolatedModules": true,
+    "noEmit": true,
+    "rootDir": "..",
+    "types": ["node", "jest"]
+  },
+  "include": [
+    "send-request.test.ts",
+    "../insomnia/send-request/**/*.ts"
+  ]
+}

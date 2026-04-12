@@ -635,7 +635,11 @@ const ProjectRoute: FC = () => {
                 selectionMode="single"
                 onSelectionChange={keys => {
                   if (keys !== 'all') {
-                    const value = keys.values().next().value;
+                    const selectedKey = keys.values().next().value;
+                    if (selectedKey == null) {
+                      return;
+                    }
+                    const value = selectedKey.toString();
                     setSearchParams({
                       ...Object.fromEntries(searchParams.entries()),
                       scope: value,

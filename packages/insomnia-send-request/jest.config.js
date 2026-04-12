@@ -3,6 +3,6 @@
 module.exports = {
   preset: '../../jest-preset.js',
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true, tsconfig: '../../tsconfig.base.json' }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: './tsconfig.json' }],
   },
 };

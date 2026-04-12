@@ -4,7 +4,7 @@ const path = require('node:path');
 module.exports = {
   preset: '../../jest-preset.js',
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: './tsconfig.json' }],
   },
   cache: false,
   modulePathIgnorePatterns: ['./src/network/.*/__mocks__'],

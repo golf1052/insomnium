@@ -416,7 +416,11 @@ export const Debug: FC = () => {
     getItems: keys =>
       [...keys].map(key => ({ 'text/plain': key.toString() })),
     onReorder(event) {
-      const id = event.keys.values().next().value.toString();
+      const firstKey = event.keys.values().next().value;
+      if (firstKey == null) {
+        return;
+      }
+      const id = firstKey.toString();
       const targetId = event.target.key.toString();
 
       const dropItem = collection.find(r => r.doc._id === id);
@@ -922,7 +926,11 @@ export const Debug: FC = () => {
                 selectionMode="single"
                 onSelectionChange={keys => {
                   if (keys !== 'all') {
-                    const value = keys.values().next().value;
+                    const selectedKey = keys.values().next().value;
+                    if (selectedKey == null) {
+                      return;
+                    }
+                    const value = selectedKey.toString();
 
                     const item = collection.find(
                       item => item.doc._id === value
