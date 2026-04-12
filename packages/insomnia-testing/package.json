@@ -20,6 +20,10 @@
     "build": "tsc --build tsconfig.build.json",
     "watch": "npm run build -- --watch"
   },
+  "dependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^11.7.5"
+  },
   "homepage": "https://github.com/ArchGPT/insomnium#readme",
   "description": ""
 }

@@ -15,6 +15,16 @@ To switch back to the Electron build, run:
 npm run install-libcurl-electron
 ```
 
+## Windows app build workflow
+
+The root `postinstall` hook leaves `node-libcurl` on the Electron build, which is correct for running the app but not for Node-driven build validation on Windows. Use this sequence when you need to run `npm run app-build` from the repository root:
+
+```shell
+npm run install-libcurl-node
+npm run app-build
+npm run install-libcurl-electron
+```
+
 ## Run CLI Smoke Tests
 
 ```shell

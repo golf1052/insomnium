@@ -50,7 +50,7 @@
     "@jest/types": "^28.1.0",
     "@types/chai": "^4.3.5",
     "@types/eslint": "^8.4.3",
-    "@types/mocha": "^10.0.1",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.3.3",
     "@types/svgo": "^2.6.3",
     "@typescript-eslint/eslint-plugin": "^6.3.0",
@@ -77,5 +77,8 @@
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.8.12"
+  },
+  "overrides": {
+    "serialize-javascript": "7.0.5"
   }
 }
