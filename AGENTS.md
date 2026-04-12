@@ -69,12 +69,14 @@ The root `lint`, `type-check`, and `test` scripts fan out to workspaces with `--
 - `CONTRIBUTING.md`: issue and PR expectations
 - `packages/insomnia-smoke-test/README.md`: smoke-test development and debugging
 - `packages/insomnia-smoke-test/CLI.md`: CLI smoke-test notes
-- `plan.md`: keep this root backlog document current whenever plan-backed work changes status, clears a blocker, or finishes
+- `plan.md`: keep this root active backlog document current whenever plan-backed work changes status, clears a blocker, or finishes
+- `plans/history/*.md`: completed root plans live here as historical artifacts once they are no longer the active backlog
 
 ## Planning discipline
 
 - If a task is executing against the root `plan.md`, update `plan.md` as the work progresses rather than only at the end.
 - When a blocker is cleared or a backlog item moves to done, reflect that in `plan.md` before concluding the task.
+- When a root plan is fully complete and no longer the active backlog, move it under `plans/history/` and reset the root `plan.md` for current work.
 
 ## Known quirks
 
