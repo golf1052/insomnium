@@ -10,7 +10,7 @@ import { CONTENT_TYPE_EVENT_STREAM, CONTENT_TYPE_GRAPHQL, CONTENT_TYPE_JSON, MET
 import { ChangeBufferEvent, database } from '../../common/database';
 import { getContentDispositionHeader } from '../../common/misc';
 import { RENDER_PURPOSE_SEND, RenderedRequest } from '../../common/render';
-import { ResponsePatch } from '../../main/network/libcurl-promise';
+import type { ResponsePatch } from '../../main/network/libcurl-promise';
 import * as models from '../../models';
 import { BaseModel } from '../../models';
 import { CookieJar } from '../../models/cookie-jar';

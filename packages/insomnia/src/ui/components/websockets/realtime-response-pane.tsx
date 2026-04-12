@@ -5,7 +5,7 @@ import styled from 'styled-components';
 
 import { getSetCookieHeaders } from '../../../common/misc';
 import { CurlEvent } from '../../../main/network/curl';
-import { ResponseTimelineEntry } from '../../../main/network/libcurl-promise';
+import type { ResponseTimelineEntry } from '../../../main/network/libcurl-promise';
 import { WebSocketEvent } from '../../../main/network/websocket';
 import { Response } from '../../../models/response';
 import { WebSocketResponse } from '../../../models/websocket-response';

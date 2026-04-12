@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
-import { ResponseTimelineEntry } from '../../../main/network/libcurl-promise';
+import type { ResponseTimelineEntry } from '../../../main/network/libcurl-promise';
 import * as models from '../../../models/index';
 import type { Response } from '../../../models/response';
 import { ResponseTimelineViewer } from '../../components/viewers/response-timeline-viewer';

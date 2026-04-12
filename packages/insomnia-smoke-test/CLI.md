@@ -1,9 +1,11 @@
 # CLI
 
-## install node version of libcurl
+## libcurl runtime helpers
 
-`npm install` now restores the Electron build of `node-libcurl` via the root `postinstall` hook.
-For CLI-style Node usage, switch to the Node build with:
+`npm install` restores the Electron build of `node-libcurl` via the root `postinstall` hook.
+On Windows, the normal app workflows (`npm run dev`, `npm run app-build`, and `npm run app-package`) now handle the right native runtime automatically, so they no longer need a manual binary swap.
+
+If you need the Node build explicitly for direct CLI-style debugging, switch to it with:
 
 ```shell
 npm run install-libcurl-node
@@ -12,16 +14,6 @@ npm run install-libcurl-node
 To switch back to the Electron build, run:
 
 ```shell
-npm run install-libcurl-electron
-```
-
-## Windows app build workflow
-
-The root `postinstall` hook leaves `node-libcurl` on the Electron build, which is correct for running the app but not for Node-driven build validation on Windows. Use this sequence when you need to run `npm run app-build` from the repository root:
-
-```shell
-npm run install-libcurl-node
-npm run app-build
 npm run install-libcurl-electron
 ```
 

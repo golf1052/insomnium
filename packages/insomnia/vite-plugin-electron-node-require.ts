@@ -2,8 +2,11 @@ import { createRequire } from 'node:module';
 
 import type { Plugin } from 'vite';
 
+import { buildRequireModuleSource, resolveModuleExports } from './scripts/electron-node-require-utils';
+
 export interface Options {
   modules: string[];
+  staticExports?: Record<string, string[]>;
 }
 
 const VIRTUAL_EXTERNAL_PREFIX = 'virtual:external:';
@@ -27,8 +30,10 @@ const getExternalId = (id: string) => {
 export function electronNodeRequire(options: Options): Plugin {
   const {
     modules = [],
+    staticExports = {},
   } = options;
   const moduleSet = new Set(modules);
+  const nodeRequire = createRequire(import.meta.url);
 
   return {
     name: 'vite-plugin-electron-node-require',
@@ -83,24 +88,12 @@ export function electronNodeRequire(options: Options): Plugin {
           `;
         }
 
-        const nodeRequire = createRequire(import.meta.url);
-        const exports = Object.keys(nodeRequire(externalId));
-
-        // Filter out the exports that are valid javascript variable keywords:
-        const validExports = exports.filter(e => {
-          try {
-            new Function(`const ${e} = true`);
-            return true;
-          } catch {
-            return false;
-          }
+        const { exportNames, hasDefaultExport } = resolveModuleExports(externalId, {
+          nodeRequire,
+          staticExports,
         });
 
-        return [
-          `const requiredModule = globalThis.require('${externalId}');`,
-          `${validExports.map(e => `export const ${e} = requiredModule.${e};`).join('\n')}`,
-          `${exports.includes('default') ? 'export default requiredModule.default;' : 'export default requiredModule'}`,
-        ].join('\n');
+        return buildRequireModuleSource(externalId, exportNames, hasDefaultExport);
       }
 
       // Return null to indicate that this plugin should not resolve the module

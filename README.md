@@ -113,11 +113,12 @@ rm -rf ~/.cache/electron
 
 If you are on Windows and have problems, you may need to install [Windows Build Tools](https://github.com/felixrieseberg/windows-build-tools)
 
-`npm install` restores the Electron build of `node-libcurl` via the root `postinstall` hook. When validating a Windows app build, temporarily switch to the Node build of `node-libcurl`, run the build, and then switch back to the Electron build:
+`npm install` restores the Electron build of `node-libcurl` via the root `postinstall` hook. On Windows, the normal app workflows now handle the native runtime correctly, so `npm run dev`, `npm run app-build`, and `npm run app-package` do not require any manual `node-libcurl` switching.
+
+If you need to force a specific `node-libcurl` runtime for direct CLI-style debugging, the manual helpers are still available:
 
 ```shell
 npm run install-libcurl-node
-npm run app-build
 npm run install-libcurl-electron
 ```
 

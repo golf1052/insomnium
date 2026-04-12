@@ -7,6 +7,16 @@ import { defineConfig } from 'vite';
 import pkg from './package.json';
 import { electronNodeRequire } from './vite-plugin-electron-node-require';
 
+const NODE_LIBCURL_EXPORTS = [
+  'Curl',
+  'CurlAuth',
+  'CurlCode',
+  'CurlFeature',
+  'CurlHttpVersion',
+  'CurlInfoDebug',
+  'CurlNetrc',
+];
+
 export default defineConfig(({ mode }) => {
   const __DEV__ = mode !== 'production';
   const nodeRequiredModules = Object.entries(pkg.dependencies)
@@ -58,6 +68,10 @@ export default defineConfig(({ mode }) => {
           ...builtinModules.filter(m => m !== 'buffer'),
           ...builtinModules.map(m => `node:${m}`),
         ],
+        staticExports: {
+          // Avoid loading the native module during Vite builds on Windows just to discover its exports.
+          '@getinsomnia/node-libcurl': NODE_LIBCURL_EXPORTS,
+        },
       }),
       babel({
         include: /[\\/]src[\\/].*\.[jt]sx?$/,
