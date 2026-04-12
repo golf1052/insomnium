@@ -4,7 +4,7 @@
 
 Keep this monorepo as up to date as practical to reduce dependency-related security exposure, while acknowledging that some parts of the stack (especially Electron and native modules) are harder to upgrade safely than ordinary library dependencies.
 
-## Current state
+## Baseline state at plan start
 
 - The repo is an npm workspace monorepo with these relevant manifests:
   - `package.json`
@@ -26,7 +26,7 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `shell.nix` -> `nodejs-24_x` and `electron_41`
 - The external `nedb` package no longer appears in workspace manifests or `package-lock.json`; the app now uses the in-repo `agentdb` workspace, while some fixture names still reflect the legacy NeDB file format for compatibility.
 - The current builder stack also pulls in `@electron/rebuild@4.0.3` through `electron-builder-squirrel-windows`, which requires Node `>=22.12.0`; the older Node 18 pins were therefore stale relative to the checked-in dependency graph.
-- Current `npm audit` snapshot:
+- Initial `npm audit` snapshot:
   - 17 total vulnerabilities
   - 0 critical
   - 12 high
@@ -118,28 +118,33 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - Added a root npm override for `serialize-javascript@7.0.5` to keep Mocha off the vulnerable `6.x` line while upstream still declares `^6.0.2`.
   - Refreshed the lockfile in the stable pre-upgrade dependency graph, then aligned the local install state so Mocha resolves the overridden root package instead of a nested `6.0.2` copy.
   - `npm audit` no longer reports `serialize-javascript`, and `mocha` now only carries the remaining low-severity `diff` advisory.
+- Closed `axios-follow-up` and `vite-security-follow-up` based on the current repo state.
+  - `packages/insomnia` and `packages/insomnia-send-request` now pin `axios@^1.15.0`.
+  - `packages/insomnia` now pins `vite@^8.0.8`.
+  - The current `npm audit` output no longer reports `axios` or `vite`.
 - Current `npm audit` snapshot:
-  - 19 total vulnerabilities
-  - 1 critical
-  - 11 high
+  - 16 total vulnerabilities
+  - 0 critical
+  - 10 high
   - 0 moderate
-  - 7 low
+  - 6 low
 - Current notable findings:
-  - `axios` now reports a direct critical, with a forward fix available above the current `^1.14.0` pin.
-  - `vite@^8.0.3` now carries newly disclosed direct high findings affecting `8.0.0 - 8.0.4`, so the previously cleared Vite line has reopened.
+  - No critical vulnerabilities remain in the current audit snapshot.
+  - `axios@^1.15.0` in both app packages and `vite@^8.0.8` in `packages/insomnia` have cleared the previously reopened direct advisories from the audit report.
   - `mocha` now runs at `^11.7.5` in `packages/insomnia-testing` and resolves the local `serialize-javascript@7.0.5` override; the remaining audit item on Mocha is the low-severity `diff` advisory.
   - `jshint` is already on its latest release, and the current audit recommendation remains an unusable downgrade to `0.5.9`.
   - The spectral stack (`@stoplight/spectral-core`, `@stoplight/spectral-formats`, `@stoplight/spectral-ruleset-bundler`, `@stoplight/spectral-rulesets`) still carries no-fix high findings on the latest direct versions used here.
-  - `jest-environment-jsdom` now shows a low-severity fix path only through a semver-major jump to the Jest 30 stack.
   - `svg-text-to-path` still has a low-severity issue with no fix available.
+  - The low-severity `jsdom`, `http-proxy-agent`, and `@tootallnate/once` chain currently hangs off `svg-text-to-path`.
   - The deprecated `apiconnect-wsdl` path and its transitive `xmldom` critical have been cleared by the TechSpokes migration.
-- Previous backlog items are complete, but the newly disclosed `axios` and `vite` advisories reopen the audit watchlist alongside the remaining no-fix/manual-review packages.
+- Previous backlog items are complete, and the remaining audit watchlist is now limited to the spectral/jshint highs plus the low-severity Mocha and SVG-related chains.
 
 ## Highest-priority findings
 
 ### 1. Critical direct dependencies
 
-- `axios` is now a direct critical dependency in the current audit snapshot, with a fix available above the current `^1.14.0` pin used in `packages/insomnia` and `packages/insomnia-send-request`.
+- No critical vulnerabilities remain in the current audit snapshot.
+- The earlier reopened `axios` direct critical is no longer present after the move to `axios@^1.15.0` in `packages/insomnia` and `packages/insomnia-send-request`.
 - The previous `apiconnect-wsdl` -> `xmldom` critical path remains cleared by replacing the deprecated WSDL conversion stack.
 
 ### 2. Remaining high direct dependencies
@@ -149,18 +154,18 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
   - `@stoplight/spectral-formats`
   - `@stoplight/spectral-ruleset-bundler`
   - `@stoplight/spectral-rulesets`
-- App/tooling still showing direct high findings: `jshint` and `vite`
-- `vite@^8.0.3` now has newly disclosed direct highs affecting `8.0.0 - 8.0.4`
+- App/tooling still showing direct high findings: `jshint`
+- The remaining transitive high findings (`lodash`, `minimatch`, `rollup`, and spectral helper packages) sit under the spectral / `jshint` stack.
+- The earlier reopened `vite` direct high is no longer present after the move to `vite@^8.0.8`.
 - The previous platform-coupled direct findings on `electron` and `@getinsomnia/node-libcurl` have been cleared by the Electron 41 / `node-libcurl` 3.2.1 upgrade
-- The previously straightforward direct findings on `apiconnect-wsdl`, `@xmldom/xmldom`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, `grpc-reflection-js`, and `@vitejs/plugin-react` have been cleared; `axios` and `vite` now need fresh follow-up because new advisories landed after the prior upgrade wave.
+- The previously straightforward direct findings on `apiconnect-wsdl`, `@xmldom/xmldom`, `axios`, `dompurify`, `lodash`, `node-forge`, `express`, `react-router-dom`, `svgo`, `vite`, `ws`, `electron-builder`, `electron-builder-squirrel-windows`, `grpc-reflection-js`, and `@vitejs/plugin-react` have been cleared.
 
 ### 3. Remaining low-severity follow-ups
 
 - No moderate vulnerabilities remain in the current audit snapshot.
 - `mocha` now only reports a low-severity advisory via `diff`; the local `serialize-javascript@7.0.5` override clears the previous Mocha-linked high finding while upstream still declares `^6.0.2`.
-- `jest-environment-jsdom` is now the only low-severity direct finding with an available fix path, and that path is a semver-major jump to `jest-environment-jsdom@30.3.0` and the broader Jest 30 stack.
-- The low transitive `jsdom`, `http-proxy-agent`, and `@tootallnate/once` advisories ride on that same Jest/jsdom decision.
 - `svg-text-to-path` remains a low-severity direct finding with no automatic fix.
+- The low transitive `jsdom`, `http-proxy-agent`, and `@tootallnate/once` advisories currently ride on `svg-text-to-path`, not the Jest toolchain.
 
 ### 4. High-risk platform/toolchain area
 
@@ -178,16 +183,16 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 - After a fresh `npm install`, the root `postinstall` restores the Electron prebuild of `node-libcurl`; validating `npm run app-build` on Windows currently requires a temporary `npm run install-libcurl-node`, followed by `npm run install-libcurl-electron` to restore the app runtime binding
 - The WSDL importer now uses `@techspokes/typescript-wsdl-client` to generate OpenAPI 3.1 documents, which are then passed through the existing OpenAPI importer; the deprecated `apiconnect-wsdl` dependency and its `xmldom` critical path are gone
 - `mocha` is upgraded to `^11.7.5`, and a root override now keeps it on `serialize-javascript@7.0.5`; npm still reports the remaining low-severity `diff` advisory, while `npm ls` marks the overridden edge invalid because upstream still declares `^6.0.2`
-- `jest-environment-jsdom` now carries the remaining low-severity fixable path, but resolving it implies a semver-major Jest/jsdom toolchain move rather than a small patch bump
+- The current low-severity `jsdom`, `http-proxy-agent`, and `@tootallnate/once` path rides on `svg-text-to-path`; `jest-environment-jsdom` is not currently called out by `npm audit`
 - `svg-text-to-path` has a low-severity issue with no automatic fix, so it should stay visible until the SVG toolchain is reviewed
 - Historical NeDB follow-up is now down to legacy fixture naming and compatibility language, not a current direct-package audit item
 
 ## Proposed approach
 
 1. Re-run `npm audit` after dependency or toolchain changes so this document stays aligned with the current lockfile state.
-1. Reopen active upgrade work for `axios` and `vite` first, then revisit the spectral stack and `jshint`; keep the local `serialize-javascript` override in place until Mocha widens its declared range or ships a fix for the remaining `diff` low.
+1. Revisit the spectral stack and `jshint` first; keep the local `serialize-javascript` override in place until Mocha widens its declared range or ships a fix for the remaining `diff` low.
 1. Keep Electron and `@getinsomnia/node-libcurl` upgrades paired and validate install/build/package behavior together, because the Windows prebuild path is platform-coupled; on Windows, Node-side build validation after a fresh install currently needs the documented `install-libcurl-node` / `install-libcurl-electron` swap.
-1. Treat the remaining Jest/jsdom and SVG findings as lower-priority maintenance work unless they become exploitable in product code or piggyback naturally on other tooling upgrades.
+1. Treat the remaining low-severity Mocha and SVG-related findings as lower-priority maintenance work unless they become exploitable in product code or piggyback naturally on other tooling upgrades.
 
 ## Todo backlog
 
@@ -225,15 +230,15 @@ Keep this monorepo as up to date as practical to reduce dependency-related secur
 1. `serialize-javascript-override` - done
     - Added a root npm override for `serialize-javascript@7.0.5`, updated the lockfile accordingly, and validated Mocha compatibility in this repo.
     - The previous Mocha-linked `serialize-javascript` high is gone; the remaining Mocha audit item is the low-severity `diff` advisory.
-1. `axios-follow-up` - pending
-    - Revisit the direct `axios` pins in `packages/insomnia` and `packages/insomnia-send-request` for the newly disclosed critical advisories above `^1.14.0`.
-    - Re-run request/auth validation after any follow-up bump because these advisories landed after the prior direct-upgrade wave.
-1. `vite-security-follow-up` - pending
-    - Revisit `packages/insomnia` `vite@^8.0.3` for the newly disclosed `8.0.0 - 8.0.4` highs and assess the compatible update path alongside the current Rolldown/plugin integration.
-    - Re-run renderer build validation after any Vite follow-up because the advisories landed after the earlier Vite 8 adoption.
+1. `axios-follow-up` - done
+    - `packages/insomnia` and `packages/insomnia-send-request` now carry `axios@^1.15.0`.
+    - Current `npm audit` no longer reports `axios`, so the reopened direct critical is cleared.
+1. `vite-security-follow-up` - done
+    - `packages/insomnia` now carries `vite@^8.0.8`.
+    - Current `npm audit` no longer reports `vite`, so the reopened direct high is cleared.
 
 ## Notes
 
 - Confirmed scope: this plan covers runtime, build, and test dependencies, because build-chain issues still affect the repo's security posture and ability to ship safely.
 - Confirmed scope: this backlog still includes replacement or mitigation work for packages without clean fixes, but the historical `nedb` package risk has already been reduced by the in-repo `agentdb` replacement.
-- Current remaining audit findings are concentrated in `axios`, `vite`, the spectral stack, `jshint`, the low-severity Mocha `diff` path, and the Jest/jsdom/SVG toolchain.
+- Current remaining audit findings are concentrated in the spectral stack, `jshint`, the low-severity Mocha `diff` path, and the `svg-text-to-path` -> `jsdom` chain.
